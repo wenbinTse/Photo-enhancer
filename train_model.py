@@ -57,7 +57,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # get processed enhanced image
 
-    enhanced = models.resnet(phone_image)
+    # enhanced = models.resnet(phone_image)
+    enhanced = models.u_net(phone_image)
 
     # transform both dslr and enhanced images to grayscale
 

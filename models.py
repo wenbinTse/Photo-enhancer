@@ -101,14 +101,6 @@ def u_net(input_image):
 
             return l18
 
-
-
-
-
-
-
-
-
 def resnet(input_image):
 
     with tf.variable_scope("generator"):
