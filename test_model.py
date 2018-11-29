@@ -3,7 +3,7 @@
 from scipy import misc
 import numpy as np
 import tensorflow as tf
-from models import resnet
+from models import u_net
 import utils
 import os
 import sys
@@ -25,7 +25,7 @@ x_ = tf.placeholder(tf.float32, [None, IMAGE_SIZE])
 x_image = tf.reshape(x_, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, 3])
 
 # generate enhanced image
-enhanced = resnet(x_image)
+enhanced = u_net(x_image)
 
 with tf.Session(config=config) as sess:
 
