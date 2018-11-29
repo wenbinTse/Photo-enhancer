@@ -24,14 +24,17 @@ w_content, w_color, w_texture, w_tv, \
 dped_dir, vgg_dir, eval_step = utils.process_command_args(sys.argv)
 
 np.random.seed(0)
+tf.set_random_seed(0)
 
 # loading training and test data
 
 print("Loading test data...")
+#wb: BATCH_SIZE似乎没作用
 test_data, test_answ = load_test_data(phone, dped_dir, PATCH_SIZE)
 print("Test data was loaded\n")
 
 print("Loading training data...")
+#wb: load_batch并不是load batch，而是获取所有train data
 train_data, train_answ = load_batch(phone, dped_dir, train_size, PATCH_SIZE)
 print("Training data was loaded\n")
 

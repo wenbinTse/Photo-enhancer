@@ -1,5 +1,114 @@
 import tensorflow as tf
 
+def new_leaky_relu(tensor, alpha=0.2):
+    return tf.nn.leaky_relu(tensor, alpha)
+
+def new_conv_layer(inputs, filters, kernel_size, stride, name, norm=True, relu=True):
+    result = tf.layers.conv2d(
+        inputs,
+        filters,
+        kernel_size,
+        stride=stride,
+        kernel_initializer=tf.initializers.truncated_normal(stddev=0.01),
+        bias_initializer=tf.initializers.constant(0.01),
+        name=name,
+        padding='SAME'
+    )
+
+    if norm:
+        result = _instance_norm(result)
+    if relu:
+        result = new_leaky_relu(result)
+    return result
+
+def global_concat_layer(inputs, concated):
+    h = tf.shape(tensor)[1]
+    w = tf.shape(tensor)[2]
+    concat_t = tf.squeeze(concated, [1, 2])
+    dims = concat_t.get_shape()[-1]
+    batch_l = tf.unstack(concat_t, axis=0)
+    bs = []
+    for batch in batch_l:
+        batch = tf.tile(batch, [h * w])
+        batch = tf.reshape(batch, [h, w, -1])
+        bs.append(batch)
+    concat_t = tf.stack(bs)
+    concat_t.set_shape(concat_t.get_shape().as_list()[:3] + [dims])
+    tensor = tf.concat(3, [inputs, concat_t])
+    return tensor
+
+def concat_layer(inputs, concated, norm: True, relu: True):
+    tensor = tf.concat(3, [inputs, concated])
+    if norm:
+        tensor = _instance_norm(tensor)
+    if relu:
+        tensor = new_leaky_relu(tensor)
+    return tensor
+
+#我觉得可以直接用反卷积
+def resize_layer(inputs, scale=2, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False):
+    t_shape = tf.shape(inputs)
+    t_size = [t_shape[1]*scale, t_shape[2]*scale]
+    tensor = tf.image.resize_images(inputs, t_size, method, align_corners)
+    return tensor
+
+def add_layer(inputs, added):
+    tensor = tf.add(inputs, added)
+    return tensor
+
+def u_net(input_image):
+    with tf.variable_scope('generator'):
+        with tf.variable_scope('net1'):
+            l1 = new_conv_layer(input_image, 16, 3, 1, 'conv1')
+            l2 = new_conv_layer(l1, 32, 5, 2, 'conv2')
+            l3 = new_conv_layer(l2, 64, 5, 2, 'conv3')
+            l4 = new_conv_layer(l3, 128, 5, 2, 'conv4')
+            l5 = new_conv_layer(l4, 128, 5, 2, name='conv4')
+        
+        # global feature
+        with tf.variable_scope('net2'):
+            l6 = new_conv_layer(l5, 128, 5, 2, name='conv1')
+            l7 = new_conv_layer(l6, 128, 5, 2, name='conv2')
+            l8 = new_conv_layer(l7, 128, 8, 1, name='conv3', norm=False)
+            l9 = new_conv_layer(l8, 128, 1, 1, nam3='conv4', norm=False, relu=False)
+    
+        with tf.variable_scope('net3'):
+            l10 = new_conv_layer(l5, 128, 3, 1, name='conv1')
+            l10_concat = global_concat_layer(l10, l9)
+
+            l11 = new_conv_layer(l10_concat, 128, 1, 1, name='conv2')
+            
+            l12 = new_conv_layer(l11, 128, 3, 1, name='conv3', norm=False, relu=False)
+            l12_resize = resize_layer(l12)
+            l12_concat = concat_layer(l12_resize, l4)
+
+            l13 = new_conv_layer(l12_concat, 128, 3, 1, name='conv4', norm=False, relu=False)
+            l13_resize = resize_layer(l13)
+            l13_concat = concat_layer(l13_resize, l3)
+
+            l14 = new_conv_layer(l13_concat, 64, 3, 1, name='conv5', norm=False, relu=False)
+            l14_resize = resize_layer(l14)
+            l14_concat = concat_layer(l14_resize, l2)
+
+            l15 = new_conv_layer(l14_concat, 32, 3, 1, name='conv6', norm=False, relu=False)
+            l15_resize = resize_layer(l15)
+            l15_concat = concat_layer(l15_resize, l1)
+
+            l16 = new_conv_layer(l15_concat, 16, 3, 1, name='conv7')
+            l17 = new_conv_layer(l16, 3, 3, 1, name='conv8', norm=False, relu=False)
+
+            l18 = add_layer(l17, input_image)
+
+            return l18
+
+
+
+
+
+
+
+
+
 def resnet(input_image):
 
     with tf.variable_scope("generator"):
@@ -89,8 +198,8 @@ def bias_variable(shape, name):
     initial = tf.constant(0.01, shape=shape)
     return tf.Variable(initial, name=name)
 
-def conv2d(x, W):
-    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+def conv2d(x, W, stride=1):
+    return tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding='SAME')
 
 def leaky_relu(x, alpha = 0.2):
     return tf.maximum(alpha * x, x)
