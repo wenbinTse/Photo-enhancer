@@ -48,6 +48,7 @@ def process_command_args(arguments):
     eval_step = 1000
 
     phone = ""
+    last_step = -1
 
     for args in arguments:
 
@@ -90,7 +91,9 @@ def process_command_args(arguments):
 
         if args.startswith("eval_step"):
             eval_step = int(args.split("=")[1])
-
+        
+        if args.startswith("last_step"):
+            last_step = int(args.split('=')[1])
 
     if phone == "":
         print("\nPlease specify the camera model by running the script with the following parameter:\n")
@@ -118,9 +121,12 @@ def process_command_args(arguments):
     print("Path to VGG-19 network:", vgg_dir)
     print("Evaluation step:", str(eval_step))
     print()
+    if last_step != -1:
+        print('Go on training')
+        print('last step: ', last_step)
     return phone, batch_size, train_size, learning_rate, num_train_iters, \
             w_content, w_color, w_texture, w_tv,\
-            dped_dir, vgg_dir, eval_step
+            dped_dir, vgg_dir, eval_step, last_step
 
 
 def process_test_model_args(arguments):

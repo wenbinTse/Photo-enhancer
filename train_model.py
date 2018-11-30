@@ -21,7 +21,7 @@ PATCH_SIZE = PATCH_WIDTH * PATCH_HEIGHT * 3
 
 phone, batch_size, train_size, learning_rate, num_train_iters, \
 w_content, w_color, w_texture, w_tv, \
-dped_dir, vgg_dir, eval_step = utils.process_command_args(sys.argv)
+dped_dir, vgg_dir, eval_step, last_step = utils.process_command_args(sys.argv)
 
 np.random.seed(0)
 tf.set_random_seed(0)
@@ -133,6 +133,11 @@ with tf.Graph().as_default(), tf.Session() as sess:
     print('Initializing variables')
     sess.run(tf.global_variables_initializer())
 
+    if last_step != -1:
+        print('Loading model')
+        saver = tf.train.Saver()
+        saver.restore(sess, 'models/' + str(phone) + '_iteration_' + str(last_step) + '.ckpt')
+
     print('Training network')
 
     train_loss_gen = 0.0
@@ -144,7 +149,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     logs = open('models/' + phone + '.txt', "w+")
     logs.close()
 
-    for i in range(num_train_iters):
+    for i in range(last_step, num_train_iters):
 
         # train generator
 
