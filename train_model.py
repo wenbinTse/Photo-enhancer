@@ -148,7 +148,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     logs = open('models/' + phone + '.txt', "w+")
     logs.close()
 
-    for i in range(last_step, num_train_iters):
+    for i in range(last_step, num_train_iters + last_step + 1):
 
         # train generator
 
