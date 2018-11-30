@@ -135,7 +135,6 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     if last_step != -1:
         print('Loading model')
-        saver = tf.train.Saver()
         saver.restore(sess, 'models/' + str(phone) + '_iteration_' + str(last_step) + '.ckpt')
 
     print('Training network')
