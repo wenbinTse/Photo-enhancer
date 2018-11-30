@@ -8,7 +8,7 @@ def new_conv_layer(inputs, filters, kernel_size, stride, name, norm=True, relu=T
         inputs,
         filters,
         kernel_size,
-        stride=stride,
+        strides=stride,
         kernel_initializer=tf.initializers.truncated_normal(stddev=0.01),
         bias_initializer=tf.initializers.constant(0.01),
         name=name,
@@ -22,23 +22,16 @@ def new_conv_layer(inputs, filters, kernel_size, stride, name, norm=True, relu=T
     return result
 
 def global_concat_layer(inputs, concated):
-    h = tf.shape(tensor)[1]
-    w = tf.shape(tensor)[2]
-    concat_t = tf.squeeze(concated, [1, 2])
-    dims = concat_t.get_shape()[-1]
-    batch_l = tf.unstack(concat_t, axis=0)
-    bs = []
-    for batch in batch_l:
-        batch = tf.tile(batch, [h * w])
-        batch = tf.reshape(batch, [h, w, -1])
-        bs.append(batch)
-    concat_t = tf.stack(bs)
-    concat_t.set_shape(concat_t.get_shape().as_list()[:3] + [dims])
-    tensor = tf.concat(3, [inputs, concat_t])
+    h = tf.shape(inputs)[1]
+    w = tf.shape(inputs)[2]
+    concated = tf.expand_dims(concated, 1)
+    concated = tf.expand_dims(concated, 2)
+    concated = tf.tile(concated, [1, h, w, 1])
+    tensor = tf.concat([inputs, concated], 3)
     return tensor
 
-def concat_layer(inputs, concated, norm: True, relu: True):
-    tensor = tf.concat(3, [inputs, concated])
+def concat_layer(inputs, concated, norm=True, relu=True):
+    tensor = tf.concat([inputs, concated], 3)
     if norm:
         tensor = _instance_norm(tensor)
     if relu:
@@ -46,14 +39,16 @@ def concat_layer(inputs, concated, norm: True, relu: True):
     return tensor
 
 #我觉得可以直接用反卷积
-def resize_layer(inputs, scale=2, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False):
-    t_shape = tf.shape(inputs)
-    t_size = [t_shape[1]*scale, t_shape[2]*scale]
-    tensor = tf.image.resize_images(inputs, t_size, method, align_corners)
+def resize_layer(inputs, size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False):
+    tensor = tf.image.resize_images(inputs, size, method, align_corners)
     return tensor
 
 def add_layer(inputs, added):
     tensor = tf.add(inputs, added)
+    return tensor
+
+def global_average_layer(inputs, name='gloval_average'):
+    tensor = tf.reduce_mean(inputs, [1,2], name=name)
     return tensor
 
 def u_net(input_image):
@@ -63,39 +58,41 @@ def u_net(input_image):
             l2 = new_conv_layer(l1, 32, 5, 2, 'conv2')
             l3 = new_conv_layer(l2, 64, 5, 2, 'conv3')
             l4 = new_conv_layer(l3, 128, 5, 2, 'conv4')
-            l5 = new_conv_layer(l4, 128, 5, 2, name='conv4')
+            l5 = new_conv_layer(l4, 128, 5, 2, 'conv5')
+            print('l5', l5.shape)
         
         # global feature
         with tf.variable_scope('net2'):
-            l6 = new_conv_layer(l5, 128, 5, 2, name='conv1')
-            l7 = new_conv_layer(l6, 128, 5, 2, name='conv2')
-            l8 = new_conv_layer(l7, 128, 8, 1, name='conv3', norm=False)
-            l9 = new_conv_layer(l8, 128, 1, 1, nam3='conv4', norm=False, relu=False)
+            l6 = new_conv_layer(l5, 128, 5, 2, 'conv1')
+            l7 = new_conv_layer(l6, 128, 5, 2, 'conv2')
+            l8 = new_conv_layer(l7, 128, 8, 2, 'conv3', norm=False, relu=False)
+            print('l8', l8.shape)
+            l9 = global_average_layer(l8)
     
         with tf.variable_scope('net3'):
-            l10 = new_conv_layer(l5, 128, 3, 1, name='conv1')
+            l10 = new_conv_layer(l5, 128, 3, 1, 'conv1', norm=False, relu=False)
             l10_concat = global_concat_layer(l10, l9)
 
-            l11 = new_conv_layer(l10_concat, 128, 1, 1, name='conv2')
+            l11 = new_conv_layer(l10_concat, 128, 1, 1, 'conv2')
             
-            l12 = new_conv_layer(l11, 128, 3, 1, name='conv3', norm=False, relu=False)
-            l12_resize = resize_layer(l12)
+            l12 = new_conv_layer(l11, 128, 3, 1, 'conv3', norm=False, relu=False)
+            l12_resize = resize_layer(l12, size=[l4.shape[1], l4.shape[2]])
             l12_concat = concat_layer(l12_resize, l4)
 
-            l13 = new_conv_layer(l12_concat, 128, 3, 1, name='conv4', norm=False, relu=False)
-            l13_resize = resize_layer(l13)
+            l13 = new_conv_layer(l12_concat, 128, 3, 1, 'conv4', norm=False, relu=False)
+            l13_resize = resize_layer(l13, [l3.shape[1], l3.shape[2]])
             l13_concat = concat_layer(l13_resize, l3)
 
-            l14 = new_conv_layer(l13_concat, 64, 3, 1, name='conv5', norm=False, relu=False)
-            l14_resize = resize_layer(l14)
+            l14 = new_conv_layer(l13_concat, 64, 3, 1, 'conv5', norm=False, relu=False)
+            l14_resize = resize_layer(l14, [l2.shape[1], l2.shape[2]])
             l14_concat = concat_layer(l14_resize, l2)
 
-            l15 = new_conv_layer(l14_concat, 32, 3, 1, name='conv6', norm=False, relu=False)
-            l15_resize = resize_layer(l15)
+            l15 = new_conv_layer(l14_concat, 32, 3, 1, 'conv6', norm=False, relu=False)
+            l15_resize = resize_layer(l15, [l1.shape[1], l1.shape[2]])
             l15_concat = concat_layer(l15_resize, l1)
 
-            l16 = new_conv_layer(l15_concat, 16, 3, 1, name='conv7')
-            l17 = new_conv_layer(l16, 3, 3, 1, name='conv8', norm=False, relu=False)
+            l16 = new_conv_layer(l15_concat, 16, 3, 1, 'conv7')
+            l17 = new_conv_layer(l16, 3, 3, 1, 'conv8', norm=False, relu=False)
 
             l18 = add_layer(l17, input_image)
 

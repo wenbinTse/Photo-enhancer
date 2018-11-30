@@ -1,3 +1,6 @@
 /.vscode
 /dped/*
 /history
+/__pycache__
+/vgg_pretrained/*
+/models/*
