@@ -52,6 +52,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
     phone_ = tf.placeholder(tf.float32, [None, PATCH_SIZE])
     phone_image = tf.reshape(phone_, [-1, PATCH_HEIGHT, PATCH_WIDTH, 3])
 
+    training = tf.placeholder(tf.bool)
+
     dslr_ = tf.placeholder(tf.float32, [None, PATCH_SIZE])
     dslr_image = tf.reshape(dslr_, [-1, PATCH_HEIGHT, PATCH_WIDTH, 3])
 
@@ -60,7 +62,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     # get processed enhanced image
 
     # enhanced = models.resnet(phone_image)
-    enhanced = models.u_net(phone_image)
+    enhanced = models.u_net(phone_image, training)
 
     # transform both dslr and enhanced images to grayscale
 
@@ -161,7 +163,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
         dslr_images = train_answ[idx_train]
 
         [loss_temp, temp] = sess.run([loss_generator, train_step_gen],
-                                        feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: all_zeros})
+                                        feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: all_zeros, training: True})
         train_loss_gen += loss_temp / eval_step
 
         # train discriminator
@@ -186,6 +188,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
             test_accuracy_disc = 0.0
             loss_ssim = 0.0
 
+            test_enhanced = u
+
             for j in range(num_test_batches):
 
                 be = j * batch_size
@@ -198,7 +202,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
                 [enhanced_crops, accuracy_disc, losses] = sess.run([enhanced, discim_accuracy, \
                                 [loss_generator, loss_content, loss_color, loss_texture, loss_tv, loss_psnr]], \
-                                feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: swaps})
+                                feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: swaps, training: False})
 
                 test_losses_gen += np.asarray(losses) / num_test_batches
                 test_accuracy_disc += accuracy_disc / num_test_batches

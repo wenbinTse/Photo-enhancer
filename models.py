@@ -5,7 +5,7 @@ def new_leaky_relu(tensor, alpha=0.2):
     return tf.nn.leaky_relu(tensor, alpha)
 
 
-def new_conv_layer(inputs, filters, kernel_size, stride, name, norm=True, relu=True):
+def new_conv_layer(inputs, filters, kernel_size, stride, name, training, norm=True, relu=True):
     result = tf.layers.conv2d(
         inputs,
         filters,
@@ -18,7 +18,7 @@ def new_conv_layer(inputs, filters, kernel_size, stride, name, norm=True, relu=T
     )
 
     if norm:
-        result = _instance_norm(result)
+        result = batch_norm_layer(result, training)
     if relu:
         result = new_leaky_relu(result)
     return result
@@ -34,10 +34,10 @@ def global_concat_layer(inputs, concated):
     return tensor
 
 
-def concat_layer(inputs, concated, norm=True, relu=True):
+def concat_layer(inputs, concated, training, norm=True, relu=True):
     tensor = tf.concat([inputs, concated], 3)
     if norm:
-        tensor = batch_norm_layer(tensor)
+        tensor = batch_norm_layer(tensor, training)
     if relu:
         tensor = selu_layer(tensor)
     return tensor
@@ -75,48 +75,48 @@ def batch_norm_layer(tensor, training):
     )
 
 
-def u_net(input_image):
+def u_net(input_image, training):
     with tf.variable_scope('generator'):
         with tf.variable_scope('net1'):
             l1 = new_conv_layer(input_image, 16, 3, 1, 'conv1')
-            l2 = new_conv_layer(l1, 32, 5, 2, 'conv2')
-            l3 = new_conv_layer(l2, 64, 5, 2, 'conv3')
-            l4 = new_conv_layer(l3, 128, 5, 2, 'conv4')
-            l5 = new_conv_layer(l4, 128, 5, 2, 'conv5')
+            l2 = new_conv_layer(l1, 32, 5, 2, 'conv2', training)
+            l3 = new_conv_layer(l2, 64, 5, 2, 'conv3', training)
+            l4 = new_conv_layer(l3, 128, 5, 2, 'conv4', training)
+            l5 = new_conv_layer(l4, 128, 5, 2, 'conv5', training)
             print('l5', l5.shape)
         
         # global feature
         with tf.variable_scope('net2'):
-            l6 = new_conv_layer(l5, 128, 5, 2, 'conv1')
-            l7 = new_conv_layer(l6, 128, 5, 2, 'conv2')
-            l8 = new_conv_layer(l7, 128, 8, 2, 'conv3', norm=False, relu=False)
+            l6 = new_conv_layer(l5, 128, 5, 2, 'conv1', training)
+            l7 = new_conv_layer(l6, 128, 5, 2, 'conv2', training)
+            l8 = new_conv_layer(l7, 128, 8, 2, 'conv3', training, norm=False, relu=False)
             print('l8', l8.shape)
             l9 = global_average_layer(l8)
     
         with tf.variable_scope('net3'):
-            l10 = new_conv_layer(l5, 128, 3, 1, 'conv1', norm=False, relu=False)
-            l10_concat = global_concat_layer(l10, l9)
+            l10 = new_conv_layer(l5, 128, 3, 1, 'conv1', training, norm=False, relu=False)
+            l10_concat = global_concat_layer(l10, l9, training)
 
             l11 = new_conv_layer(l10_concat, 128, 1, 1, 'conv2')
             
-            l12 = new_conv_layer(l11, 128, 3, 1, 'conv3', norm=False, relu=False)
+            l12 = new_conv_layer(l11, 128, 3, 1, 'conv3', training, norm=False, relu=False)
             l12_resize = resize_layer(l12, size=[l4.shape[1], l4.shape[2]])
-            l12_concat = concat_layer(l12_resize, l4)
+            l12_concat = concat_layer(l12_resize, l4, training)
 
-            l13 = new_conv_layer(l12_concat, 128, 3, 1, 'conv4', norm=False, relu=False)
+            l13 = new_conv_layer(l12_concat, 128, 3, 1, 'conv4', training, norm=False, relu=False)
             l13_resize = resize_layer(l13, [l3.shape[1], l3.shape[2]])
-            l13_concat = concat_layer(l13_resize, l3)
+            l13_concat = concat_layer(l13_resize, l3, training)
 
-            l14 = new_conv_layer(l13_concat, 64, 3, 1, 'conv5', norm=False, relu=False)
+            l14 = new_conv_layer(l13_concat, 64, 3, 1, 'conv5', training, norm=False, relu=False)
             l14_resize = resize_layer(l14, [l2.shape[1], l2.shape[2]])
-            l14_concat = concat_layer(l14_resize, l2)
+            l14_concat = concat_layer(l14_resize, l2, training)
 
-            l15 = new_conv_layer(l14_concat, 32, 3, 1, 'conv6', norm=False, relu=False)
+            l15 = new_conv_layer(l14_concat, 32, 3, 1, 'conv6', training, norm=False, relu=False)
             l15_resize = resize_layer(l15, [l1.shape[1], l1.shape[2]])
-            l15_concat = concat_layer(l15_resize, l1)
+            l15_concat = concat_layer(l15_resize, l1, training)
 
-            l16 = new_conv_layer(l15_concat, 16, 3, 1, 'conv7')
-            l17 = new_conv_layer(l16, 3, 3, 1, 'conv8', norm=False, relu=False)
+            l16 = new_conv_layer(l15_concat, 16, 3, 1, training, 'conv7')
+            l17 = new_conv_layer(l16, 3, 3, 1, 'conv8', training, norm=False, relu=False)
 
             l18 = add_layer(l17, input_image)
 
