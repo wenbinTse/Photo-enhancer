@@ -78,7 +78,7 @@ def batch_norm_layer(tensor, training):
 def u_net(input_image, training):
     with tf.variable_scope('generator'):
         with tf.variable_scope('net1'):
-            l1 = new_conv_layer(input_image, 16, 3, 1, 'conv1')
+            l1 = new_conv_layer(input_image, 16, 3, 1, 'conv1', training)
             l2 = new_conv_layer(l1, 32, 5, 2, 'conv2', training)
             l3 = new_conv_layer(l2, 64, 5, 2, 'conv3', training)
             l4 = new_conv_layer(l3, 128, 5, 2, 'conv4', training)
