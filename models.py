@@ -95,7 +95,7 @@ def u_net(input_image, training):
     
         with tf.variable_scope('net3'):
             l10 = new_conv_layer(l5, 128, 3, 1, 'conv1', training, norm=False, relu=False)
-            l10_concat = global_concat_layer(l10, l9, training)
+            l10_concat = global_concat_layer(l10, l9)
 
             l11 = new_conv_layer(l10_concat, 128, 1, 1, 'conv2')
             
