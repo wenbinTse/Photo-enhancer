@@ -48,7 +48,7 @@ def process_command_args(arguments):
     eval_step = 1000
 
     phone = ""
-    last_step = -1
+    last_step = -1 # 用于控制是否继续训练
 
     for args in arguments:
 
