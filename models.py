@@ -39,7 +39,7 @@ def concat_layer(inputs, concated, norm=True, relu=True):
     if norm:
         tensor = batch_norm_layer(tensor)
     if relu:
-        tensor = new_leaky_relu(tensor)
+        tensor = selu_layer(tensor)
     return tensor
 
 
@@ -59,7 +59,7 @@ def global_average_layer(inputs, name='gloval_average'):
     return tensor
 
 
-def exe_selu_layer(tensor):
+def selu_layer(tensor):
     #alpha = 1.6732632423543772848170429916717
     #scale = 1.0507009873554804934193349852946
     alpha, scale = (1.0198755295894968, 1.0026538655307724)
