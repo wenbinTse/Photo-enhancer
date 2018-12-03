@@ -97,7 +97,7 @@ def u_net(input_image, training):
             l10 = new_conv_layer(l5, 128, 3, 1, 'conv1', training, norm=False, relu=False)
             l10_concat = global_concat_layer(l10, l9)
 
-            l11 = new_conv_layer(l10_concat, 128, 1, 1, training, 'conv2')
+            l11 = new_conv_layer(l10_concat, 128, 1, 1, 'conv2', training)
             
             l12 = new_conv_layer(l11, 128, 3, 1, 'conv3', training, norm=False, relu=False)
             l12_resize = resize_layer(l12, size=[l4.shape[1], l4.shape[2]])
