@@ -177,7 +177,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
         dslr_images = train_answ[idx_train]
 
         [accuracy_temp, temp] = sess.run([discim_accuracy, train_step_disc],
-                                        feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: swaps})
+                                        feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: swaps, training: True})
         train_acc_discrim += accuracy_temp / eval_step
 
         if i % eval_step == 0:
@@ -187,8 +187,6 @@ with tf.Graph().as_default(), tf.Session() as sess:
             test_losses_gen = np.zeros((1, 6))
             test_accuracy_disc = 0.0
             loss_ssim = 0.0
-
-            test_enhanced = u
 
             for j in range(num_test_batches):
 
@@ -231,7 +229,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
             # save visual results for several test image crops
 
-            enhanced_crops = sess.run(enhanced, feed_dict={phone_: test_crops, dslr_: dslr_images, adv_: all_zeros})
+            enhanced_crops = sess.run(enhanced, feed_dict={phone_: test_crops, dslr_: dslr_images, adv_: all_zeros, training: False})
 
             idx = 0
             for crop in enhanced_crops:
