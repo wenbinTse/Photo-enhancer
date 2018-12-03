@@ -1,7 +1,9 @@
 import tensorflow as tf
 
+
 def new_leaky_relu(tensor, alpha=0.2):
     return tf.nn.leaky_relu(tensor, alpha)
+
 
 def new_conv_layer(inputs, filters, kernel_size, stride, name, norm=True, relu=True):
     result = tf.layers.conv2d(
@@ -21,6 +23,7 @@ def new_conv_layer(inputs, filters, kernel_size, stride, name, norm=True, relu=T
         result = new_leaky_relu(result)
     return result
 
+
 def global_concat_layer(inputs, concated):
     h = tf.shape(inputs)[1]
     w = tf.shape(inputs)[2]
@@ -30,26 +33,47 @@ def global_concat_layer(inputs, concated):
     tensor = tf.concat([inputs, concated], 3)
     return tensor
 
+
 def concat_layer(inputs, concated, norm=True, relu=True):
     tensor = tf.concat([inputs, concated], 3)
     if norm:
-        tensor = _instance_norm(tensor)
+        tensor = batch_norm_layer(tensor)
     if relu:
         tensor = new_leaky_relu(tensor)
     return tensor
+
 
 #我觉得可以直接用反卷积
 def resize_layer(inputs, size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False):
     tensor = tf.image.resize_images(inputs, size, method, align_corners)
     return tensor
 
+
 def add_layer(inputs, added):
     tensor = tf.add(inputs, added)
     return tensor
 
+
 def global_average_layer(inputs, name='gloval_average'):
     tensor = tf.reduce_mean(inputs, [1,2], name=name)
     return tensor
+
+
+def exe_selu_layer(tensor):
+    #alpha = 1.6732632423543772848170429916717
+    #scale = 1.0507009873554804934193349852946
+    alpha, scale = (1.0198755295894968, 1.0026538655307724)
+    return scale*tf.where(tensor>=0.0, tensor, alpha*tf.nn.elu(tensor))
+
+
+#
+def batch_norm_layer(tensor, training):
+    return tf.layers.batch_normalization(
+        tensor,
+        epsilon=1e-5,
+        training=training
+    )
+
 
 def u_net(input_image):
     with tf.variable_scope('generator'):
