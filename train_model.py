@@ -45,8 +45,6 @@ num_test_batches = int(test_data.shape[0]/batch_size)
 
 with tf.Graph().as_default(), tf.Session() as sess:
 
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    
     # placeholders for training data
 
     phone_ = tf.placeholder(tf.float32, [None, PATCH_SIZE])
@@ -129,9 +127,10 @@ with tf.Graph().as_default(), tf.Session() as sess:
     generator_vars = [v for v in tf.global_variables() if v.name.startswith("generator")]
     discriminator_vars = [v for v in tf.global_variables() if v.name.startswith("discriminator")]
 
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         train_step_gen = tf.train.AdamOptimizer(learning_rate).minimize(loss_generator, var_list=generator_vars)
-        train_step_disc = tf.train.AdamOptimizer(learning_rate).minimize(loss_discrim, var_list=discriminator_vars)
+    train_step_disc = tf.train.AdamOptimizer(learning_rate).minimize(loss_discrim, var_list=discriminator_vars)
 
     saver = tf.train.Saver(var_list=generator_vars, max_to_keep=100)
 
