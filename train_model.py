@@ -51,6 +51,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     phone_image = tf.reshape(phone_, [-1, PATCH_HEIGHT, PATCH_WIDTH, 3])
 
     training = tf.placeholder(tf.bool)
+    global_step = tf.Variable(0)
 
     dslr_ = tf.placeholder(tf.float32, [None, PATCH_SIZE])
     dslr_image = tf.reshape(dslr_, [-1, PATCH_HEIGHT, PATCH_WIDTH, 3])
@@ -127,9 +128,13 @@ with tf.Graph().as_default(), tf.Session() as sess:
     generator_vars = [v for v in tf.global_variables() if v.name.startswith("generator")]
     discriminator_vars = [v for v in tf.global_variables() if v.name.startswith("discriminator")]
 
+    learning_rate = tf.train.exponential_decay(5e-4, global_step, decay_steps=1000, decay_rate=0.9,
+                                               staircase=True)
+
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-        train_step_gen = tf.train.AdamOptimizer(learning_rate).minimize(loss_generator, var_list=generator_vars)
+        train_step_gen = tf.train.AdamOptimizer(learning_rate)\
+            .minimize(loss_generator, var_list=generator_vars, global_step=global_step)
     train_step_disc = tf.train.AdamOptimizer(learning_rate).minimize(loss_discrim, var_list=discriminator_vars)
 
     saver = tf.train.Saver(var_list=generator_vars, max_to_keep=100)
@@ -244,7 +249,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
             saver.save(sess, 'models/' + str(phone) + '_iteration_' + str(i) + '.ckpt', write_meta_graph=False)
 
             # reload a different batch of training data
-
-            del train_data
-            del train_answ
-            train_data, train_answ = load_batch(phone, dped_dir, train_size, PATCH_SIZE)
+            if i != 0 and i % (eval_step * 5):
+                del train_data
+                del train_answ
+                train_data, train_answ = load_batch(phone, dped_dir, train_size, PATCH_SIZE)
