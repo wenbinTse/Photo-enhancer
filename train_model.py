@@ -249,7 +249,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
             saver.save(sess, 'models/' + str(phone) + '_iteration_' + str(i) + '.ckpt', write_meta_graph=False)
 
             # reload a different batch of training data
-            if i != 0 and i % (eval_step * 5):
+            if i != 0 and i % (eval_step * 5) == 0:
                 del train_data
                 del train_answ
                 train_data, train_answ = load_batch(phone, dped_dir, train_size, PATCH_SIZE)
