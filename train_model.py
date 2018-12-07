@@ -128,7 +128,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     generator_vars = [v for v in tf.global_variables() if v.name.startswith("generator")]
     discriminator_vars = [v for v in tf.global_variables() if v.name.startswith("discriminator")]
 
-    learning_rate = tf.train.exponential_decay(5e-4, global_step, decay_steps=1000, decay_rate=0.9,
+    learning_rate = tf.train.exponential_decay(5e-4, global_step, decay_steps=1000, decay_rate=0.88,
                                                staircase=True)
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -166,7 +166,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
         phone_images = train_data[idx_train]
         dslr_images = train_answ[idx_train]
 
-        [loss_temp, temp] = sess.run([loss_generator, train_step_gen],
+        [loss_temp, temp, learning_rate_tmp] = sess.run([loss_generator, train_step_gen, learning_rate],
                                         feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: all_zeros, training: True})
         train_loss_gen += loss_temp / eval_step
 
@@ -185,6 +185,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
         train_acc_discrim += accuracy_temp / eval_step
 
         if i % eval_step == 0:
+
+            print('learning rate: ', learning_rate_tmp)
 
             # test generator and discriminator CNNs
 

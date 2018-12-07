@@ -71,6 +71,7 @@ def batch_norm_layer(tensor, training):
     return tf.layers.batch_normalization(
         tensor,
         epsilon=1e-5,
+        momentum=0.9,
         training=training
     )
 
@@ -118,8 +119,8 @@ def u_net(input_image, training):
             l16 = new_conv_layer(l15_concat, 16, 3, 1, 'conv7', training)
             l17 = new_conv_layer(l16, 3, 3, 1, 'conv8', training, norm=False, relu=False)
 
-            # l18 = add_layer(l17, input_image)
-            l18 = tf.nn.sigmoid(l17)
+            l18 = add_layer(l17, input_image)
+            # l18 = tf.nn.sigmoid(l17)
 
             return l18
 
