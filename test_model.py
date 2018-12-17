@@ -23,9 +23,10 @@ config = tf.ConfigProto(device_count={'GPU': 0}) if use_gpu == "false" else None
 # create placeholders for input images
 x_ = tf.placeholder(tf.float32, [None, IMAGE_SIZE])
 x_image = tf.reshape(x_, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, 3])
+training = tf.placeholder(tf.bool)
 
 # generate enhanced image
-enhanced = u_net(x_image)
+enhanced = u_net(x_image, training)
 
 with tf.Session(config=config) as sess:
 
@@ -54,7 +55,7 @@ with tf.Session(config=config) as sess:
 
             # get enhanced image
 
-            enhanced_2d = sess.run(enhanced, feed_dict={x_: image_crop_2d})
+            enhanced_2d = sess.run(enhanced, feed_dict={x_: image_crop_2d, training: False})
             enhanced_image = np.reshape(enhanced_2d, [IMAGE_HEIGHT, IMAGE_WIDTH, 3])
 
             before_after = np.hstack((image_crop, enhanced_image))
@@ -92,7 +93,7 @@ with tf.Session(config=config) as sess:
 
                 # get enhanced image
 
-                enhanced_2d = sess.run(enhanced, feed_dict={x_: image_crop_2d})
+                enhanced_2d = sess.run(enhanced, feed_dict={x_: image_crop_2d, training: False})
                 enhanced_image = np.reshape(enhanced_2d, [IMAGE_HEIGHT, IMAGE_WIDTH, 3])
 
                 before_after = np.hstack((image_crop, enhanced_image))

@@ -101,19 +101,19 @@ def u_net(input_image, training):
             l11 = new_conv_layer(l10_concat, 128, 1, 1, 'conv2', training)
             
             l12 = new_conv_layer(l11, 128, 3, 1, 'conv3', training, norm=False, relu=False)
-            l12_resize = resize_layer(l12, size=[l4.shape[1], l4.shape[2]])
+            l12_resize = resize_layer(l12, size=[tf.shape(l4)[1], tf.shape(l4)[2]])
             l12_concat = concat_layer(l12_resize, l4, training)
 
             l13 = new_conv_layer(l12_concat, 128, 3, 1, 'conv4', training, norm=False, relu=False)
-            l13_resize = resize_layer(l13, [l3.shape[1], l3.shape[2]])
+            l13_resize = resize_layer(l13, [tf.shape(l3)[1], tf.shape(l3)[2]])
             l13_concat = concat_layer(l13_resize, l3, training)
 
             l14 = new_conv_layer(l13_concat, 64, 3, 1, 'conv5', training, norm=False, relu=False)
-            l14_resize = resize_layer(l14, [l2.shape[1], l2.shape[2]])
+            l14_resize = resize_layer(l14, [tf.shape(l2)[1], tf.shape(l2)[2]])
             l14_concat = concat_layer(l14_resize, l2, training)
 
             l15 = new_conv_layer(l14_concat, 32, 3, 1, 'conv6', training, norm=False, relu=False)
-            l15_resize = resize_layer(l15, [l1.shape[1], l1.shape[2]])
+            l15_resize = resize_layer(l15, [tf.shape(l1)[1], tf.shape(l1)[2]])
             l15_concat = concat_layer(l15_resize, l1, training)
 
             l16 = new_conv_layer(l15_concat, 16, 3, 1, 'conv7', training)
