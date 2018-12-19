@@ -215,9 +215,11 @@ with tf.Graph().as_default(), tf.Session() as sess:
         phone_images = train_data[idx_train]
         dslr_images = train_answ[idx_train]
 
-        [accuracy_temp, temp, summaries_val] = sess.run([discim_accuracy, train_step_disc, summaries_op],
+        [accuracy_temp, temp, summaries_val, ld, le] = sess.run([discim_accuracy, train_step_disc, summaries_op, logits_dslr, logits_enhanced],
                                         feed_dict={phone_: phone_images, dslr_: dslr_images, training: True})
         summary_writer.add_summary(summaries_val, i)
+        print('logits_dslr, ', ld[:5])
+        print('logits_enhanced, ', le[:5])
 
         train_acc_discrim += accuracy_temp / eval_step
 
