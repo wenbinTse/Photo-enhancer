@@ -78,8 +78,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # losses
     # 1) texture (adversarial) loss
-    d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(probs_dslr, tf.ones_like(probs_dslr)))
-    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(probs_enhanced, tf.zeros_like(probs_enhanced)))
+    d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, tf.ones_like(probs_dslr)))
+    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.zeros_like(probs_enhanced)))
     loss_discrim = d_loss_fake + d_loss_real
 
     half = 0.5
@@ -87,7 +87,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     dslr_accuracy = tf.reduce_mean(tf.cast(tf.greater(probs_dslr, half), tf.float32))
     discim_accuracy = (phone_accuracy + dslr_accuracy) / 2
 
-    loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(probs_dslr, probs_enhanced))
+    loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.ones_like(probs_enhanced)))
 
     # 2) content loss
 
