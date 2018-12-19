@@ -4,7 +4,7 @@ import os
 import numpy as np
 import sys
 
-mean_RGB = np.array([123.68 ,  116.779,  103.939])
+mean_RGB = np.array([123.68,  116.779,  103.939])
 
 
 def preprocess(imgs):
@@ -32,17 +32,17 @@ def load_test_data(phone, dped_dir, IMAGE_SIZE):
     for i in range(0, NUM_TEST_IMAGES):
         
         I = np.asarray(misc.imread(test_directory_phone + str(i) + '.jpg'))
-        I = np.float16(np.reshape(I, [1, IMAGE_SIZE]))/255
+        I = np.float32(np.reshape(I, [1, IMAGE_SIZE]))
         test_data[i, :] = I
         
         I = np.asarray(misc.imread(test_directory_dslr + str(i) + '.jpg'))
-        I = np.float16(np.reshape(I, [1, IMAGE_SIZE]))/255
+        I = np.float32(np.reshape(I, [1, IMAGE_SIZE]))
         test_answ[i, :] = I
 
         if i % 100 == 0:
             print(str(round(i * 100 / NUM_TEST_IMAGES)) + "% done", end="\r")
 
-    return test_data, test_answ
+    return preprocess(test_data), preprocess(test_answ)
 
 
 def load_batch(phone, dped_dir, TRAIN_SIZE, IMAGE_SIZE):
@@ -68,15 +68,15 @@ def load_batch(phone, dped_dir, TRAIN_SIZE, IMAGE_SIZE):
     for img in TRAIN_IMAGES:
 
         I = np.asarray(misc.imread(train_directory_phone + str(img) + '.jpg'))
-        I = np.float16(np.reshape(I, [1, IMAGE_SIZE])) / 255
+        I = np.float16(np.reshape(I, [1, IMAGE_SIZE]))
         train_data[i, :] = I
 
         I = np.asarray(misc.imread(train_directory_dslr + str(img) + '.jpg'))
-        I = np.float16(np.reshape(I, [1, IMAGE_SIZE])) / 255
+        I = np.float16(np.reshape(I, [1, IMAGE_SIZE]))
         train_answ[i, :] = I
 
         i += 1
         if i % 100 == 0:
             print(str(round(i * 100 / TRAIN_SIZE)) + "% done", end="\r")
 
-    return train_data, train_answ
+    return preprocess(train_data), preprocess(train_answ)
