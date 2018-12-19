@@ -63,8 +63,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # transform both dslr and enhanced images to grayscale
 
-    enhanced_gray = tf.reshape(tf.image.rgb_to_grayscale(enhanced), [-1, PATCH_WIDTH * PATCH_HEIGHT])
-    dslr_gray = tf.reshape(tf.image.rgb_to_grayscale(dslr_image),[-1, PATCH_WIDTH * PATCH_HEIGHT])
+    enhanced_gray = tf.reshape(tf.image.rgb_to_grayscale(enhanced), [-1, PATCH_WIDTH, PATCH_HEIGHT, 1])
+    dslr_gray = tf.reshape(tf.image.rgb_to_grayscale(dslr_image),[-1, PATCH_WIDTH, PATCH_HEIGHT, 1])
 
     # # push randomly the enhanced or dslr image to an adversarial CNN-discriminator
     #
