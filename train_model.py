@@ -4,8 +4,9 @@ import tensorflow as tf
 from scipy import misc
 import numpy as np
 import sys
+import os
 
-from load_dataset import load_test_data, load_batch
+from load_dataset import load_test_data, load_batch, postprocess
 from ssim import MultiScaleSSIM
 import models
 import utils
@@ -23,13 +24,12 @@ phone, batch_size, train_size, learning_rate, num_train_iters, \
 w_content, w_color, w_texture, w_tv, \
 dped_dir, vgg_dir, eval_step, last_step = utils.process_command_args(sys.argv)
 
-np.random.seed(0)
-tf.set_random_seed(0)
+np.random.seed(666)
+tf.set_random_seed(666)
 
 # loading training and test data
 
 print("Loading test data...")
-#wb: BATCH_SIZE似乎没作用
 test_data, test_answ = load_test_data(phone, dped_dir, PATCH_SIZE)
 print("Test data was loaded\n")
 
@@ -56,8 +56,6 @@ with tf.Graph().as_default(), tf.Session() as sess:
     dslr_ = tf.placeholder(tf.float32, [None, PATCH_SIZE])
     dslr_image = tf.reshape(dslr_, [-1, PATCH_HEIGHT, PATCH_WIDTH, 3])
 
-    adv_ = tf.placeholder(tf.float32, [None, 1])
-
     # get processed enhanced image
 
     # enhanced = models.resnet(phone_image)
@@ -68,30 +66,45 @@ with tf.Graph().as_default(), tf.Session() as sess:
     enhanced_gray = tf.reshape(tf.image.rgb_to_grayscale(enhanced), [-1, PATCH_WIDTH * PATCH_HEIGHT])
     dslr_gray = tf.reshape(tf.image.rgb_to_grayscale(dslr_image),[-1, PATCH_WIDTH * PATCH_HEIGHT])
 
-    # push randomly the enhanced or dslr image to an adversarial CNN-discriminator
+    # # push randomly the enhanced or dslr image to an adversarial CNN-discriminator
+    #
+    # adversarial_ = tf.multiply(enhanced_gray, 1 - adv_) + tf.multiply(dslr_gray, adv_)
+    # adversarial_image = tf.reshape(adversarial_, [-1, PATCH_HEIGHT, PATCH_WIDTH, 1])
 
-    adversarial_ = tf.multiply(enhanced_gray, 1 - adv_) + tf.multiply(dslr_gray, adv_)
-    adversarial_image = tf.reshape(adversarial_, [-1, PATCH_HEIGHT, PATCH_WIDTH, 1])
+    # 之前是随机选取，然后混合判断，现在采用跟DCGAN一样的策略，分开判断，再使用交叉熵
 
-    discrim_predictions = models.adversarial(adversarial_image)
+    logits_phone, probs_phone = models.adversarial(phone_image)
+    logits_dslr, probs_dslr = models.adversarial(dslr_image)
+    logits_enhanced, _ = models.adversarial(enhanced)
 
     # losses
     # 1) texture (adversarial) loss
 
-    discrim_target = tf.concat([adv_, 1 - adv_], 1)
+    # discrim_target = tf.concat([adv_, 1 - adv_], 1)
+    #
+    # loss_discrim = -tf.reduce_sum(discrim_target * tf.log(tf.clip_by_value(discrim_predictions, 1e-10, 1.0)))
+    # loss_texture = -loss_discrim
+    #
+    # correct_predictions = tf.equal(tf.argmax(discrim_predictions, 1), tf.argmax(discrim_target, 1))
+    # discim_accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
 
-    loss_discrim = -tf.reduce_sum(discrim_target * tf.log(tf.clip_by_value(discrim_predictions, 1e-10, 1.0)))
-    loss_texture = -loss_discrim
+    d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, tf.ones_like(logits_dslr)))
+    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_phone, tf.zeros_like(logits_phone)))
+    loss_discrim = d_loss_fake + d_loss_real
 
-    correct_predictions = tf.equal(tf.argmax(discrim_predictions, 1), tf.argmax(discrim_target, 1))
-    discim_accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
+    half = 0.5
+    phone_accuracy = tf.reduce_mean(tf.cast(tf.less_equal(probs_phone, half), tf.float32))
+    dslr_accuracy = tf.reduce_sum(tf.cast(tf.greater(probs_dslr, half), tf.float32))
+    discim_accuracy = (phone_accuracy + dslr_accuracy) / 2
+
+    loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, logits_enhanced))
 
     # 2) content loss
 
     CONTENT_LAYER = 'relu5_4'
 
-    enhanced_vgg = vgg.net(vgg_dir, vgg.preprocess(enhanced * 255))
-    dslr_vgg = vgg.net(vgg_dir, vgg.preprocess(dslr_image * 255))
+    enhanced_vgg = vgg.net(vgg_dir, enhanced)
+    dslr_vgg = vgg.net(vgg_dir, dslr_image)
 
     content_size = utils._tensor_size(dslr_vgg[CONTENT_LAYER]) * batch_size
     loss_content = 2 * tf.nn.l2_loss(enhanced_vgg[CONTENT_LAYER] - dslr_vgg[CONTENT_LAYER]) / content_size
@@ -151,11 +164,43 @@ with tf.Graph().as_default(), tf.Session() as sess:
     train_loss_gen = 0.0
     train_acc_discrim = 0.0
 
-    all_zeros = np.reshape(np.zeros((batch_size, 1)), [batch_size, 1])
     test_crops = test_data[np.random.randint(0, TEST_SIZE, 5), :]
 
     logs = open('models/' + phone + '.txt', "w+")
     logs.close()
+
+    #################################################################
+    # summary
+    _ = tf.summary.scalar('d_loss_real/train', tensor=d_loss_real, collections=['train'])
+    _ = tf.summary.scalar('d_loss_fake/train', tensor=d_loss_fake, collections=['train'])
+    _ = tf.summary.scalar('loss_discrim/train', tensor=loss_discrim, collections=['train'])
+    _ = tf.summary.scalar('phone_accuracy/train', tensor=phone_accuracy, collections=['train'])
+    _ = tf.summary.scalar('dslr_accuracy/train', tensor=dslr_accuracy, collections=['train'])
+    _ = tf.summary.scalar('loss_texture/train', tensor=loss_texture, collections=['train'])
+    _ = tf.summary.scalar('loss_content/train', tensor=loss_content, collections=['train'])
+    _ = tf.summary.scalar('loss_color/train', tensor=loss_color, collections=['train'])
+    _ = tf.summary.scalar('loss_generator/train', tensor=loss_generator, collections=['train'])
+    _ = tf.summary.scalar('learning_rate/train', tensor=learning_rate, collections=['train'])
+
+    _ = tf.summary.scalar('d_loss_real/val', tensor=d_loss_real, collections=['val'])
+    _ = tf.summary.scalar('d_loss_fake/val', tensor=d_loss_fake, collections=['val'])
+    _ = tf.summary.scalar('loss_discrim/val', tensor=loss_discrim, collections=['val'])
+    _ = tf.summary.scalar('phone_accuracy/val', tensor=phone_accuracy, collections=['val'])
+    _ = tf.summary.scalar('dslr_accuracy/val', tensor=dslr_accuracy, collections=['val'])
+    _ = tf.summary.scalar('loss_texture/val', tensor=loss_texture, collections=['val'])
+    _ = tf.summary.scalar('loss_content/val', tensor=loss_content, collections=['val'])
+    _ = tf.summary.scalar('loss_color/val', tensor=loss_color, collections=['val'])
+    _ = tf.summary.scalar('loss_generator/val', tensor=loss_generator, collections=['val'])
+
+    summaries_op = tf.summary.merge_all('train')
+    summaries_val_op = tf.summary.merge_all('val')
+
+    folder_summary = 'summary'
+    if not os.path.exists(folder_summary):
+        os.makedirs(folder_summary)
+
+    summary_writer = tf.summary.FileWriter(folder_summary, sess.graph)
+    #################################################################
 
     for i in range(last_step, num_train_iters + last_step + 1):
 
@@ -167,7 +212,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
         dslr_images = train_answ[idx_train]
 
         [loss_temp, temp, learning_rate_tmp] = sess.run([loss_generator, train_step_gen, learning_rate],
-                                        feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: all_zeros, training: True})
+                                        feed_dict={phone_: phone_images, dslr_: dslr_images, training: True})
         train_loss_gen += loss_temp / eval_step
 
         # train discriminator
@@ -180,8 +225,10 @@ with tf.Graph().as_default(), tf.Session() as sess:
         phone_images = train_data[idx_train]
         dslr_images = train_answ[idx_train]
 
-        [accuracy_temp, temp] = sess.run([discim_accuracy, train_step_disc],
-                                        feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: swaps, training: True})
+        [accuracy_temp, temp, summaries_val] = sess.run([discim_accuracy, train_step_disc, summaries_op],
+                                        feed_dict={phone_: phone_images, dslr_: dslr_images, training: True})
+        summary_writer.add_summary(summaries_val, i)
+
         train_acc_discrim += accuracy_temp / eval_step
 
         if i % eval_step == 0:
@@ -204,15 +251,16 @@ with tf.Graph().as_default(), tf.Session() as sess:
                 phone_images = test_data[be:en]
                 dslr_images = test_answ[be:en]
 
-                [enhanced_crops, accuracy_disc, losses] = sess.run([enhanced, discim_accuracy, \
-                                [loss_generator, loss_content, loss_color, loss_texture, loss_tv, loss_psnr]], \
-                                feed_dict={phone_: phone_images, dslr_: dslr_images, adv_: swaps, training: False})
-
+                [enhanced_crops, accuracy_disc, summaries_val, losses] =\
+                    sess.run([enhanced, discim_accuracy, summaries_val_op,
+                                [loss_generator, loss_content, loss_color, loss_texture, loss_tv, loss_psnr]],
+                                feed_dict={phone_: phone_images, dslr_: dslr_images, training: False})
+                summary_writer.add_summary(summaries_val, j)
                 test_losses_gen += np.asarray(losses) / num_test_batches
                 test_accuracy_disc += accuracy_disc / num_test_batches
 
-                loss_ssim += MultiScaleSSIM(np.reshape(dslr_images * 255, [batch_size, PATCH_HEIGHT, PATCH_WIDTH, 3]),
-                                                    enhanced_crops * 255) / num_test_batches
+                loss_ssim += MultiScaleSSIM(np.reshape(postprocess(dslr_images, np.float32), [batch_size, PATCH_HEIGHT, PATCH_WIDTH, 3]),
+                                                    postprocess(enhanced_crops, np.float32) ) / num_test_batches
 
             logs_disc = "step %d, %s | discriminator accuracy | train: %.4g, test: %.4g" % \
                   (i, phone, train_acc_discrim, test_accuracy_disc)
@@ -235,7 +283,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
             # save visual results for several test image crops
 
-            enhanced_crops = sess.run(enhanced, feed_dict={phone_: test_crops, dslr_: dslr_images, adv_: all_zeros, training: False})
+            enhanced_crops = sess.run(enhanced, feed_dict={phone_: test_crops, dslr_: dslr_images, training: False})
 
             idx = 0
             for crop in enhanced_crops:

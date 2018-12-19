@@ -211,3 +211,9 @@ def extract_crop(image, resolution, phone, res_sizes):
         y_down = y_up + res_sizes[resolution][0]
 
         return image[y_up : y_down, x_up : x_down, :]
+
+def sigmoid_cross_entropy_with_logits(x, y):
+    try:
+        return tf.nn.sigmoid_cross_entropy_with_logits(logits=x, labels=y)
+    except:
+        return tf.nn.sigmoid_cross_entropy_with_logits(logits=x, targets=y)

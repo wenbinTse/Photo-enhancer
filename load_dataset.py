@@ -4,6 +4,20 @@ import os
 import numpy as np
 import sys
 
+mean_RGB = np.array([123.68 ,  116.779,  103.939])
+
+
+def preprocess(imgs):
+    assert len(imgs.shape) == 4, '只处理batch照片'
+    return (imgs - mean_RGB) / 255
+
+
+def postprocess(imgs, type):
+    if type == np.float32:
+        return np.clip(imgs * 255 + mean_RGB, 0, 255)
+    else:
+        return np.round(np.clip(imgs * 255 + mean_RGB), 0, 255).astype(np.uint8)
+
 def load_test_data(phone, dped_dir, IMAGE_SIZE):
 
     test_directory_phone = dped_dir + str(phone) + '/test_data/patches/' + str(phone) + '/'

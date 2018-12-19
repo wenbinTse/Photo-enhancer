@@ -33,7 +33,7 @@ class Window(QWidget, Ui_Form):
 
         if imgName == '':
             return
-        
+
         self.origin_image = QPixmap(imgName)
         self.origin_image_name = imgName
         self.resize_image(self.image_origin, self.origin_image)

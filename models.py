@@ -77,7 +77,7 @@ def batch_norm_layer(tensor, training):
 
 
 def u_net(input_image, training):
-    with tf.variable_scope('generator'):
+    with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
         with tf.variable_scope('net1'):
             l1 = new_conv_layer(input_image, 16, 3, 1, 'conv1', training)
             l2 = new_conv_layer(l1, 32, 5, 2, 'conv2', training)
@@ -180,7 +180,7 @@ def u_net(input_image, training):
 
 def adversarial(image_):
 
-    with tf.variable_scope("discriminator"):
+    with tf.variable_scope("discriminator", reuse=tf.AUTO_REUSE):
 
         conv1 = _conv_layer(image_, 48, 11, 4, batch_nn = False)
         conv2 = _conv_layer(conv1, 128, 5, 2)
@@ -196,12 +196,15 @@ def adversarial(image_):
 
         fc = leaky_relu(tf.matmul(conv5_flat, W_fc) + bias_fc)
 
-        W_out = tf.Variable(tf.truncated_normal([1024, 2], stddev=0.01))
-        bias_out = tf.Variable(tf.constant(0.01, shape=[2]))
+        # W_out = tf.Variable(tf.truncated_normal([1024, 2], stddev=0.01))
+        # bias_out = tf.Variable(tf.constant(0.01, shape=[2]))
+        #
+        # adv_out = tf.nn.softmax(tf.matmul(fc, W_out) + bias_out)\
 
-        adv_out = tf.nn.softmax(tf.matmul(fc, W_out) + bias_out)
+        logits = tf.layers.dense(fc, 1, activation=None)
+        probabilities = tf.nn.sigmoid(logits)
     
-    return adv_out
+    return logits, probabilities
 
 def weight_variable(shape, name):
 
