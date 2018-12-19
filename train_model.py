@@ -73,27 +73,17 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # 之前是随机选取，然后混合判断，现在采用跟DCGAN一样的策略，分开判断，再使用交叉熵
 
-    logits_phone, probs_phone = models.adversarial(phone_image)
-    logits_dslr, probs_dslr = models.adversarial(dslr_image)
-    logits_enhanced, _ = models.adversarial(enhanced)
+    logits_dslr, probs_dslr = models.adversarial(dslr_gray)
+    logits_enhanced, probs_enhanced = models.adversarial(enhanced_gray)
 
     # losses
     # 1) texture (adversarial) loss
-
-    # discrim_target = tf.concat([adv_, 1 - adv_], 1)
-    #
-    # loss_discrim = -tf.reduce_sum(discrim_target * tf.log(tf.clip_by_value(discrim_predictions, 1e-10, 1.0)))
-    # loss_texture = -loss_discrim
-    #
-    # correct_predictions = tf.equal(tf.argmax(discrim_predictions, 1), tf.argmax(discrim_target, 1))
-    # discim_accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
-
     d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, tf.ones_like(logits_dslr)))
-    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_phone, tf.zeros_like(logits_phone)))
+    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.zeros_like(logits_enhanced)))
     loss_discrim = d_loss_fake + d_loss_real
 
     half = 0.5
-    phone_accuracy = tf.reduce_mean(tf.cast(tf.less_equal(probs_phone, half), tf.float32))
+    phone_accuracy = tf.reduce_mean(tf.cast(tf.less_equal(probs_enhanced, half), tf.float32))
     dslr_accuracy = tf.reduce_sum(tf.cast(tf.greater(probs_dslr, half), tf.float32))
     discim_accuracy = (phone_accuracy + dslr_accuracy) / 2
 
