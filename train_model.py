@@ -259,7 +259,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
                 test_losses_gen += np.asarray(losses) / num_test_batches
                 test_accuracy_disc += accuracy_disc / num_test_batches
 
-                loss_ssim += MultiScaleSSIM(np.reshape(postprocess(dslr_images, np.float32), [batch_size, PATCH_HEIGHT, PATCH_WIDTH, 3]),
+                loss_ssim += MultiScaleSSIM(postprocess(np.reshape(dslr_images, [batch_size, PATCH_HEIGHT, PATCH_WIDTH, 3]), np.float32),
                                                     postprocess(enhanced_crops, np.float32) ) / num_test_batches
 
             logs_disc = "step %d, %s | discriminator accuracy | train: %.4g, test: %.4g" % \
