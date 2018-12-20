@@ -184,10 +184,11 @@ def adversarial(image_):
 
         conv1 = _conv_layer(image_, 48, 11, 4, batch_nn = False)
         conv2 = _conv_layer(conv1, 128, 5, 2)
+        conv3 = _conv_layer(conv2, 128, 5, 2)
 
-        conv2_flat = tf.layers.flatten(conv2)
+        conv3_flat = tf.layers.flatten(conv3)
 
-        fc = tf.layers.dense(conv2_flat, 1024, activation=tf.nn.leaky_relu)
+        fc = tf.layers.dense(conv3_flat, 1024, activation=tf.nn.leaky_relu)
 
         # W_out = tf.Variable(tf.truncated_normal([1024, 2], stddev=0.01))
         # bias_out = tf.Variable(tf.constant(0.01, shape=[2]))
@@ -216,41 +217,35 @@ def leaky_relu(x, alpha = 0.2):
     return tf.maximum(alpha * x, x)
 
 def _conv_layer(net, num_filters, filter_size, strides, batch_nn=True):
-    
-    weights_init = _conv_init_vars(net, num_filters, filter_size)
-    strides_shape = [1, strides, strides, 1]
-    bias = tf.Variable(tf.constant(0.01, shape=[num_filters]))
 
-    net = tf.nn.conv2d(net, weights_init, strides_shape, padding='SAME') + bias   
-    net = leaky_relu(net)
+    output = tf.layers.conv2d(
+        net,
+        num_filters,
+        filter_size,
+        strides,
+        padding='SAME',
+        bias_initializer=tf.constant_initializer(0.1),
+        kernel_initializer=tf.truncated_normal_initializer(stddev=0.1, seed=1),
+        activation=tf.nn.leaky_relu
+    )
 
     if batch_nn:
-        net = _instance_norm(net)
+        output = _instance_norm(output)
 
-    return net
+    return output
 
 def _instance_norm(net):
 
-    batch, rows, cols, channels = [i.value for i in net.get_shape()]
-    var_shape = [channels]
+    with tf.variable_scope('instance_norm'):
+        batch, rows, cols, channels = [i.value for i in net.get_shape()]
+        var_shape = [channels]
 
-    mu, sigma_sq = tf.nn.moments(net, [1,2], keep_dims=True)
-    shift = tf.Variable(tf.zeros(var_shape))
-    scale = tf.Variable(tf.ones(var_shape))
+        mu, sigma_sq = tf.nn.moments(net, [1,2], keep_dims=True)
+        shift = tf.get_variable('shift', shape=var_shape, initializer=tf.zeros_initializer())
+        scale = tf.get_variable('scale', shape=var_shape, initializer=tf.ones_initializer())
 
-    epsilon = 1e-3
-    normalized = (net-mu)/(sigma_sq + epsilon)**(.5)
+        epsilon = 1e-3
+        normalized = (net-mu)/(sigma_sq + epsilon)**(.5)
 
     return scale * normalized + shift
 
-def _conv_init_vars(net, out_channels, filter_size, transpose=False):
-
-    _, rows, cols, in_channels = [i.value for i in net.get_shape()]
-
-    if not transpose:
-        weights_shape = [filter_size, filter_size, in_channels, out_channels]
-    else:
-        weights_shape = [filter_size, filter_size, out_channels, in_channels]
-
-    weights_init = tf.Variable(tf.truncated_normal(weights_shape, stddev=0.01, seed=1), dtype=tf.float32)
-    return weights_init
