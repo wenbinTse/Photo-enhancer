@@ -182,9 +182,9 @@ def adversarial(image_):
 
     with tf.variable_scope("discriminator", reuse=tf.AUTO_REUSE):
 
-        conv1 = _conv_layer(image_, 48, 11, 4, batch_nn = False)
-        conv2 = _conv_layer(conv1, 128, 5, 2)
-        conv3 = _conv_layer(conv2, 128, 5, 2)
+        conv1 = _conv_layer(image_, 48, 11, 4, 'conv1', batch_nn = False)
+        conv2 = _conv_layer(conv1, 128, 5, 2, 'conv2')
+        conv3 = _conv_layer(conv2, 128, 5, 2, 'conv3')
 
         conv3_flat = tf.layers.flatten(conv3)
 
@@ -216,21 +216,21 @@ def conv2d(x, W, stride=1):
 def leaky_relu(x, alpha = 0.2):
     return tf.maximum(alpha * x, x)
 
-def _conv_layer(net, num_filters, filter_size, strides, batch_nn=True):
+def _conv_layer(net, num_filters, filter_size, strides, name, batch_nn=True):
+    with tf.variable_scope(name):
+        output = tf.layers.conv2d(
+            net,
+            num_filters,
+            filter_size,
+            strides,
+            padding='SAME',
+            bias_initializer=tf.constant_initializer(0.1),
+            kernel_initializer=tf.truncated_normal_initializer(stddev=0.1, seed=1),
+            activation=tf.nn.leaky_relu
+        )
 
-    output = tf.layers.conv2d(
-        net,
-        num_filters,
-        filter_size,
-        strides,
-        padding='SAME',
-        bias_initializer=tf.constant_initializer(0.1),
-        kernel_initializer=tf.truncated_normal_initializer(stddev=0.1, seed=1),
-        activation=tf.nn.leaky_relu
-    )
-
-    if batch_nn:
-        output = _instance_norm(output)
+        if batch_nn:
+            output = _instance_norm(output)
 
     return output
 
