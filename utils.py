@@ -39,7 +39,7 @@ def process_command_args(arguments):
     num_train_iters = 20000
 
     w_content = 2
-    w_color = 0.1
+    w_color = 5
     w_texture = 10
     w_tv = 0.0025
 
