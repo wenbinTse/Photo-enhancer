@@ -184,11 +184,13 @@ def adversarial(image_):
 
         conv1 = _conv_layer(image_, 48, 11, 4, 'conv1', batch_nn = False)
         conv2 = _conv_layer(conv1, 128, 5, 2, 'conv2')
-        conv3 = _conv_layer(conv2, 128, 5, 2, 'conv3')
+        conv3 = _conv_layer(conv2, 192, 5, 2, 'conv3')
+        conv4 = _conv_layer(conv3, 192, 3, 1, 'conv4')
+        conv5 = _conv_layer(conv4, 128, 3, 2, 'conv5')
 
-        conv3_flat = tf.layers.flatten(conv3)
+        conv5_flat = tf.layers.flatten(conv5)
 
-        fc = tf.layers.dense(conv3_flat, 1024, activation=tf.nn.leaky_relu)
+        fc = tf.layers.dense(conv5_flat, 1024, activation=tf.nn.leaky_relu)
 
         # W_out = tf.Variable(tf.truncated_normal([1024, 2], stddev=0.01))
         # bias_out = tf.Variable(tf.constant(0.01, shape=[2]))

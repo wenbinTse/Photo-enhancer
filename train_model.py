@@ -104,7 +104,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     enhanced_blur = utils.blur(enhanced)
     dslr_blur = utils.blur(dslr_image)
 
-    loss_color = tf.reduce_sum(tf.pow(dslr_blur - enhanced_blur, 2))/(2 * batch_size)
+    loss_color = tf.reduce_mean(tf.pow(dslr_blur - enhanced_blur, 2)) * 255
 
     # 4) total variation loss
     loss_tv = tf.reduce_mean(tf.image.total_variation(enhanced))
@@ -207,17 +207,18 @@ with tf.Graph().as_default(), tf.Session() as sess:
         train_loss_gen += loss_temp / eval_step
 
         # train discriminator
+        train_disc_step = 10
+        if i % train_disc_step == 0:
+            idx_train = np.random.randint(0, train_size, batch_size)
 
-        idx_train = np.random.randint(0, train_size, batch_size)
+            phone_images = train_data[idx_train]
+            dslr_images = train_answ[idx_train]
 
-        phone_images = train_data[idx_train]
-        dslr_images = train_answ[idx_train]
+            [accuracy_temp, temp, summaries_val] = sess.run([discim_accuracy, train_step_disc, summaries_op],
+                                            feed_dict={phone_: phone_images, dslr_: dslr_images, training: True})
+            summary_writer.add_summary(summaries_val, i)
 
-        [accuracy_temp, temp, summaries_val] = sess.run([discim_accuracy, train_step_disc, summaries_op],
-                                        feed_dict={phone_: phone_images, dslr_: dslr_images, training: True})
-        summary_writer.add_summary(summaries_val, i)
-
-        train_acc_discrim += accuracy_temp / eval_step
+            train_acc_discrim += accuracy_temp / eval_step * train_disc_step
 
         if i % eval_step == 0:
 
@@ -285,7 +286,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
             saver.save(sess, 'models/' + str(phone) + '_iteration_' + str(i) + '.ckpt', write_meta_graph=False)
 
             # reload a different batch of training data
-            if i != 0 and i % (eval_step * 5) == 0:
+            if i != 0 and i % eval_step == 0:
                 del train_data
                 del train_answ
                 train_data, train_answ = load_batch(phone, dped_dir, train_size, PATCH_SIZE)
