@@ -78,8 +78,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # losses
     # 1) texture (adversarial) loss
-    d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(probs_dslr, tf.ones_like(probs_dslr)))
-    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(probs_enhanced, tf.zeros_like(probs_enhanced)))
+    d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, tf.ones_like(probs_dslr)))
+    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.zeros_like(probs_enhanced)))
     loss_discrim = d_loss_fake + d_loss_real
 
     half = 0.5
@@ -87,7 +87,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     dslr_accuracy = tf.reduce_mean(tf.cast(tf.greater(probs_dslr, half), tf.float32))
     discim_accuracy = (phone_accuracy + dslr_accuracy) / 2
 
-    loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(probs_enhanced, tf.ones_like(probs_enhanced)))
+    loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.ones_like(probs_enhanced)))
 
     # 2) content loss
 
@@ -107,13 +107,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     loss_color = tf.reduce_sum(tf.pow(dslr_blur - enhanced_blur, 2))/(2 * batch_size)
 
     # 4) total variation loss
-
-    batch_shape = (batch_size, PATCH_WIDTH, PATCH_HEIGHT, 3)
-    tv_y_size = utils._tensor_size(enhanced[:,1:,:,:])
-    tv_x_size = utils._tensor_size(enhanced[:,:,1:,:])
-    y_tv = tf.nn.l2_loss(enhanced[:,1:,:,:] - enhanced[:,:batch_shape[1]-1,:,:])
-    x_tv = tf.nn.l2_loss(enhanced[:,:,1:,:] - enhanced[:,:,:batch_shape[2]-1,:])
-    loss_tv = 2 * (x_tv/tv_x_size + y_tv/tv_y_size) / batch_size
+    loss_tv = tf.reduce_mean(tf.image.total_variation(enhanced))
 
     # final loss
 
@@ -140,7 +134,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     with tf.control_dependencies(update_ops):
         train_step_gen = tf.train.AdamOptimizer(learning_rate)\
             .minimize(loss_generator, var_list=generator_vars, global_step=global_step)
-    train_step_disc = tf.train.AdamOptimizer(learning_rate).minimize(loss_discrim, var_list=discriminator_vars)
+    train_step_disc = tf.train.AdamOptimizer(learning_rate * 0.3).minimize(loss_discrim, var_list=discriminator_vars)
 
     saver = tf.train.Saver(var_list=generator_vars, max_to_keep=100)
 
@@ -190,7 +184,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     summaries_op = tf.summary.merge_all('train')
     summaries_val_op = tf.summary.merge_all('val')
 
-    folder_summary = 'summary'
+    folder_summary = 'summary_tv_loss_and_texture_loss'
     if not os.path.exists(folder_summary):
         os.makedirs(folder_summary)
 
