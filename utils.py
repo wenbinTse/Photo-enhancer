@@ -39,9 +39,9 @@ def process_command_args(arguments):
     num_train_iters = 20000
 
     w_content = 10
-    w_color = 0.5
-    w_texture = 1
-    w_tv = 2000
+    w_color = 0.4
+    w_texture = 10
+    w_tv = 0.01
 
     dped_dir = 'dped/'
     vgg_dir = 'vgg_pretrained/imagenet-vgg-verydeep-19.mat'

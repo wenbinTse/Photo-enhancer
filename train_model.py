@@ -165,6 +165,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     _ = tf.summary.scalar('loss_texture/train', tensor=loss_texture, collections=['train'])
     _ = tf.summary.scalar('loss_content/train', tensor=loss_content, collections=['train'])
     _ = tf.summary.scalar('loss_color/train', tensor=loss_color, collections=['train'])
+    _ = tf.summary.scalar('loss_tv/train', tensor=loss_tv, collections=['train'])
     _ = tf.summary.scalar('loss_generator/train', tensor=loss_generator, collections=['train'])
     _ = tf.summary.scalar('learning_rate/train', tensor=learning_rate, collections=['train'])
     _ = tf.summary.image('enhance/train', tensor=enhanced, collections=['train'])
@@ -179,6 +180,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     _ = tf.summary.scalar('loss_texture/val', tensor=loss_texture, collections=['val'])
     _ = tf.summary.scalar('loss_content/val', tensor=loss_content, collections=['val'])
     _ = tf.summary.scalar('loss_color/val', tensor=loss_color, collections=['val'])
+    _ = tf.summary.scalar('loss_tv/val', tensor=loss_tv, collections=['val'])
     _ = tf.summary.scalar('loss_generator/val', tensor=loss_generator, collections=['val'])
 
     summaries_op = tf.summary.merge_all('train')
