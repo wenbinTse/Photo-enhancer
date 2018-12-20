@@ -15,7 +15,7 @@ def postprocess(imgs, type):
     if type == np.float32:
         return np.clip(imgs * 255 + mean_RGB, 0, 255)
     else:
-        return np.round(np.clip(imgs * 255 + mean_RGB), 0, 255).astype(np.uint8)
+        return np.round(np.clip(imgs * 255 + mean_RGB, 0, 255)).astype(np.uint8)
 
 def load_test_data(phone, dped_dir, IMAGE_SIZE):
 
