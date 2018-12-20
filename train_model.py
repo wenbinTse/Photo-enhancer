@@ -93,8 +93,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     CONTENT_LAYER = 'relu5_4'
 
-    enhanced_vgg = vgg.net(vgg_dir, enhanced)
-    dslr_vgg = vgg.net(vgg_dir, dslr_image)
+    enhanced_vgg = vgg.net(vgg_dir, enhanced * 255)
+    dslr_vgg = vgg.net(vgg_dir, dslr_image * 255)
 
     content_size = utils._tensor_size(dslr_vgg[CONTENT_LAYER]) * batch_size
     loss_content = 2 * tf.nn.l2_loss(enhanced_vgg[CONTENT_LAYER] - dslr_vgg[CONTENT_LAYER]) / content_size

@@ -201,7 +201,7 @@ def adversarial(image_):
         #
         # adv_out = tf.nn.softmax(tf.matmul(fc, W_out) + bias_out)\
 
-        logits = tf.layers.dense(fc, 1, activation=None)
+        logits = tf.layers.dense(fc, 1, activation=None, kernel_initializer=tf.initializers.truncated_normal(stddev=0.01))
         probabilities = tf.nn.sigmoid(logits)
     
     return logits, probabilities
