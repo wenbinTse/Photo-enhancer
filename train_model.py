@@ -127,14 +127,16 @@ with tf.Graph().as_default(), tf.Session() as sess:
     discriminator_vars_name = [v.name for v in discriminator_vars]
     print(discriminator_vars_name)
 
-    learning_rate = tf.train.exponential_decay(5e-4, global_step, decay_steps=1000, decay_rate=0.88,
+    learning_rate = tf.train.exponential_decay(5e-3, global_step, decay_steps=1000, decay_rate=0.8,
                                                staircase=True)
+
+    learning_rate = tf.maximum(learning_rate, 5e-5)
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         train_step_gen = tf.train.AdamOptimizer(learning_rate)\
             .minimize(loss_generator, var_list=generator_vars, global_step=global_step)
-    train_step_disc = tf.train.AdamOptimizer(learning_rate * 0.3).minimize(loss_discrim, var_list=discriminator_vars)
+    train_step_disc = tf.train.AdamOptimizer(learning_rate).minimize(loss_discrim, var_list=discriminator_vars)
 
     saver = tf.train.Saver(var_list=generator_vars, max_to_keep=100)
 
