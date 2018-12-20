@@ -212,9 +212,6 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
         idx_train = np.random.randint(0, train_size, batch_size)
 
-        # generate image swaps (dslr or enhanced) for discriminator
-        swaps = np.reshape(np.random.randint(0, 2, batch_size), [batch_size, 1])
-
         phone_images = train_data[idx_train]
         dslr_images = train_answ[idx_train]
 
@@ -238,8 +235,6 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
                 be = j * batch_size
                 en = (j+1) * batch_size
-
-                swaps = np.reshape(np.random.randint(0, 2, batch_size), [batch_size, 1])
 
                 phone_images = test_data[be:en]
                 dslr_images = test_answ[be:en]
