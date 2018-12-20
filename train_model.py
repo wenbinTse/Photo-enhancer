@@ -171,8 +171,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
     _ = tf.summary.scalar('loss_color/train', tensor=loss_color, collections=['train'])
     _ = tf.summary.scalar('loss_generator/train', tensor=loss_generator, collections=['train'])
     _ = tf.summary.scalar('learning_rate/train', tensor=learning_rate, collections=['train'])
-    _ = tf.summary.image('enhance/train', tensor=postprocess(enhanced[0], tf.uint8), collections=['train'])
-    _ = tf.summary.image('dslr/train', tensor=postprocess(dslr_image[0],tf.uint8), collections=['train'])
+    _ = tf.summary.image('enhance/train', tenso=enhanced, collections=['train'])
+    _ = tf.summary.image('dslr/train', tensor=dslr_image, collections=['train'])
 
     _ = tf.summary.scalar('d_loss_real/val', tensor=d_loss_real, collections=['val'])
     _ = tf.summary.scalar('d_loss_fake/val', tensor=d_loss_fake, collections=['val'])
