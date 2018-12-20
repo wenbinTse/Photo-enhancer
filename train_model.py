@@ -173,6 +173,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     _ = tf.summary.scalar('learning_rate/train', tensor=learning_rate, collections=['train'])
     _ = tf.summary.image('enhance/train', tensor=enhanced, collections=['train'])
     _ = tf.summary.image('dslr/train', tensor=dslr_image, collections=['train'])
+    _ = tf.summary.image('phone/train', tensor=phone_image, collections=['train'])
 
     _ = tf.summary.scalar('d_loss_real/val', tensor=d_loss_real, collections=['val'])
     _ = tf.summary.scalar('d_loss_fake/val', tensor=d_loss_fake, collections=['val'])
@@ -217,11 +218,9 @@ with tf.Graph().as_default(), tf.Session() as sess:
         phone_images = train_data[idx_train]
         dslr_images = train_answ[idx_train]
 
-        [accuracy_temp, temp, summaries_val, ld, le] = sess.run([discim_accuracy, train_step_disc, summaries_op, logits_dslr, logits_enhanced],
+        [accuracy_temp, temp, summaries_val] = sess.run([discim_accuracy, train_step_disc, summaries_op],
                                         feed_dict={phone_: phone_images, dslr_: dslr_images, training: True})
         summary_writer.add_summary(summaries_val, i)
-        print('logits_dslr, ', ld[:5])
-        print('logits_enhanced, ', le[:5])
 
         train_acc_discrim += accuracy_temp / eval_step
 
