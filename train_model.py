@@ -130,6 +130,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     generator_vars = [v for v in tf.global_variables() if v.name.startswith("generator")]
     discriminator_vars = [v for v in tf.global_variables() if v.name.startswith("discriminator")]
+    discriminator_vars_name = [v.name for v in discriminator_vars]
+    print(discriminator_vars_name)
 
     learning_rate = tf.train.exponential_decay(5e-4, global_step, decay_steps=1000, decay_rate=0.88,
                                                staircase=True)
