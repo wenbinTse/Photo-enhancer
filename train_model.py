@@ -104,8 +104,10 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     init_fn(sess)
 
-    content_size = utils._tensor_size(enhanced_nasnet) * batch_size
-    loss_content = 2 * tf.nn.l2_loss(enhanced_nasnet - dslr_nasnet) / content_size
+    enhanced_nasnet = tf.reshape(enhanced_nasnet, [-1, 2048])
+    dslr_nasnet = tf.reshape(dslr_nasnet, [-1, 2048])
+
+    loss_content = 2 * tf.nn.l2_loss(enhanced_nasnet - dslr_nasnet) / (2048 * batch_size)
 
     # 3) color loss
 
