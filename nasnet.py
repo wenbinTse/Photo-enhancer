@@ -8,10 +8,9 @@ def net(images, weights_path='./NasNet_pretrain/inception_resnet_v2_weights_tf_d
     #     include_top=False
     # )
 
-    images = tf.keras.applications.inception_resnet_v2.preprocess_input(images)
     model = tf.keras.applications.inception_resnet_v2.InceptionResNetV2(
         weights=weights_path,
-        input_tensor=images,
+        input_tensor=tf.keras.applications.inception_resnet_v2.preprocess_input(images),
         include_top=False,
         pooling='max'
     )
