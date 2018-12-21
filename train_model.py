@@ -104,8 +104,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     init_fn(sess)
 
-    enhanced_nasnet = tf.reshape(enhanced_nasnet, [-1, 2048])
-    dslr_nasnet = tf.reshape(dslr_nasnet, [-1, 2048])
+    enhanced_nasnet = tf.nn.sigmoid(enhanced_nasnet)
+    dslr_nasnet = tf.nn.sigmoid(dslr_nasnet)
 
     loss_content = 2 * tf.nn.l2_loss(enhanced_nasnet - dslr_nasnet) / (2048 * batch_size)
 
