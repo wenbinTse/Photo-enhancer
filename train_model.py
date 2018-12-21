@@ -6,11 +6,12 @@ import numpy as np
 import sys
 import os
 
-from load_dataset import load_test_data, load_batch, postprocess
+from load_dataset import load_test_data, load_batch, postprocess, postprocess_tf
 from ssim import MultiScaleSSIM
 import models
 import utils
 import vgg
+import nasnet
 
 # defining size of the training image patches
 
@@ -93,11 +94,11 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     CONTENT_LAYER = 'relu5_4'
 
-    enhanced_vgg = vgg.net(vgg_dir, enhanced * 255)
-    dslr_vgg = vgg.net(vgg_dir, dslr_image * 255)
+    enhanced_nasnet = nasnet.net(postprocess_tf(enhanced))
+    dslr_nasnet = nasnet.net(postprocess_tf(dslr_image))
 
-    content_size = utils._tensor_size(dslr_vgg[CONTENT_LAYER]) * batch_size
-    loss_content = 2 * tf.nn.l2_loss(enhanced_vgg[CONTENT_LAYER] - dslr_vgg[CONTENT_LAYER]) / content_size
+    content_size = utils._tensor_size(enhanced_nasnet) * batch_size
+    loss_content = 2 * tf.nn.l2_loss(enhanced_nasnet - dslr_nasnet) / content_size
 
     # 3) color loss
 

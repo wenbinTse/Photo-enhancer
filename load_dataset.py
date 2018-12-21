@@ -2,6 +2,7 @@ from __future__ import print_function
 from scipy import misc
 import os
 import numpy as np
+import tensorflow as tf
 import sys
 
 mean_RGB = np.array([123.68,  116.779,  103.939])
@@ -16,6 +17,9 @@ def postprocess(imgs, type):
         return np.clip(imgs * 255 + mean_RGB, 0, 255)
     else:
         return np.round(np.clip(imgs * 255 + mean_RGB, 0, 255)).astype(np.uint8)
+
+def postprocess_tf(imgs):
+    return tf.clip_by_value(imgs * 255 + mean_RGB, 0, 255)
 
 def load_test_data(phone, dped_dir, IMAGE_SIZE):
 
