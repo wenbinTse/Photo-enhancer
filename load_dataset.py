@@ -78,7 +78,8 @@ def load_batch(phone, dped_dir, TRAIN_SIZE, IMAGE_SIZE):
 
         prob = np.random.rand()
         if prob > 0.5:
-            phone_patch, dslr_patch = np.rot90(phone_patch, axes=0), np.rot90(dslr_patch, axes=0)
+            phone_patch = np.rot90(phone_patch)
+            dslr_patch = np.rot90(dslr_patch)
 
         phone_patch, dslr_patch = preprocess(phone_patch), preprocess(dslr_patch)
         phone_patch, dslr_patch = np.float32(np.reshape(phone_patch, [1, IMAGE_SIZE])), \
