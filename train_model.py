@@ -98,8 +98,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
     dslr_nasnet = content_net.net(dslr_image * 255)
 
     init_fn = slim.assign_from_checkpoint_fn(
-        'vgg_pretrained/inception_resnet_v2_2016_08_30.ckpt',
-        slim.get_model_variables('InceptionResnetV2'))
+        'vgg_pretrained/resnet_v2_101.ckpt',
+        slim.get_model_variables('resnet_v2_101'))
 
     init_fn(sess)
 

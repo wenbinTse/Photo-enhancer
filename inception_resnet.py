@@ -12,395 +12,326 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Contains the definition of the Inception Resnet V2 architecture.
+"""Contains definitions for the preactivation form of Residual Networks.
 
-As described in http://arxiv.org/abs/1602.07261.
+Residual networks (ResNets) were originally proposed in:
+[1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
+    Deep Residual Learning for Image Recognition. arXiv:1512.03385
 
-  Inception-v4, Inception-ResNet and the Impact of Residual Connections
-    on Learning
-  Christian Szegedy, Sergey Ioffe, Vincent Vanhoucke, Alex Alemi
+The full preactivation 'v2' ResNet variant implemented in this module was
+introduced by:
+[2] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
+    Identity Mappings in Deep Residual Networks. arXiv: 1603.05027
+
+The key difference of the full preactivation 'v2' variant compared to the
+'v1' variant in [1] is the use of batch normalization before every weight layer.
+
+Typical use:
+
+   from tensorflow.contrib.slim.nets import resnet_v2
+
+ResNet-101 for image classification into 1000 classes:
+
+   # inputs has shape [batch, 224, 224, 3]
+   with slim.arg_scope(resnet_v2.resnet_arg_scope()):
+      net, end_points = resnet_v2.resnet_v2_101(inputs, 1000, is_training=False)
+
+ResNet-101 for semantic segmentation into 21 classes:
+
+   # inputs has shape [batch, 513, 513, 3]
+   with slim.arg_scope(resnet_v2.resnet_arg_scope()):
+      net, end_points = resnet_v2.resnet_v2_101(inputs,
+                                                21,
+                                                is_training=False,
+                                                global_pool=False,
+                                                output_stride=16)
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import tensorflow as tf
 
+from nets import resnet_utils
+
 slim = tf.contrib.slim
+resnet_arg_scope = resnet_utils.resnet_arg_scope
 
 
-def block35(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
-  """Builds the 35x35 resnet block."""
-  with tf.variable_scope(scope, 'Block35', [net], reuse=reuse):
-    with tf.variable_scope('Branch_0'):
-      tower_conv = slim.conv2d(net, 32, 1, scope='Conv2d_1x1')
-    with tf.variable_scope('Branch_1'):
-      tower_conv1_0 = slim.conv2d(net, 32, 1, scope='Conv2d_0a_1x1')
-      tower_conv1_1 = slim.conv2d(tower_conv1_0, 32, 3, scope='Conv2d_0b_3x3')
-    with tf.variable_scope('Branch_2'):
-      tower_conv2_0 = slim.conv2d(net, 32, 1, scope='Conv2d_0a_1x1')
-      tower_conv2_1 = slim.conv2d(tower_conv2_0, 48, 3, scope='Conv2d_0b_3x3')
-      tower_conv2_2 = slim.conv2d(tower_conv2_1, 64, 3, scope='Conv2d_0c_3x3')
-    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_1, tower_conv2_2])
-    up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
-                     activation_fn=None, scope='Conv2d_1x1')
-    scaled_up = up * scale
-    if activation_fn == tf.nn.relu6:
-      # Use clip_by_value to simulate bandpass activation.
-      scaled_up = tf.clip_by_value(scaled_up, -6.0, 6.0)
+@slim.add_arg_scope
+def bottleneck(inputs, depth, depth_bottleneck, stride, rate=1,
+               outputs_collections=None, scope=None):
+  """Bottleneck residual unit variant with BN before convolutions.
 
-    net += scaled_up
-    if activation_fn:
-      net = activation_fn(net)
-  return net
+  This is the full preactivation residual unit variant proposed in [2]. See
+  Fig. 1(b) of [2] for its definition. Note that we use here the bottleneck
+  variant which has an extra bottleneck layer.
 
-
-def block17(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
-  """Builds the 17x17 resnet block."""
-  with tf.variable_scope(scope, 'Block17', [net], reuse=reuse):
-    with tf.variable_scope('Branch_0'):
-      tower_conv = slim.conv2d(net, 192, 1, scope='Conv2d_1x1')
-    with tf.variable_scope('Branch_1'):
-      tower_conv1_0 = slim.conv2d(net, 128, 1, scope='Conv2d_0a_1x1')
-      tower_conv1_1 = slim.conv2d(tower_conv1_0, 160, [1, 7],
-                                  scope='Conv2d_0b_1x7')
-      tower_conv1_2 = slim.conv2d(tower_conv1_1, 192, [7, 1],
-                                  scope='Conv2d_0c_7x1')
-    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_2])
-    up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
-                     activation_fn=None, scope='Conv2d_1x1')
-
-    scaled_up = up * scale
-    if activation_fn == tf.nn.relu6:
-      # Use clip_by_value to simulate bandpass activation.
-      scaled_up = tf.clip_by_value(scaled_up, -6.0, 6.0)
-
-    net += scaled_up
-    if activation_fn:
-      net = activation_fn(net)
-  return net
-
-
-def block8(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
-  """Builds the 8x8 resnet block."""
-  with tf.variable_scope(scope, 'Block8', [net], reuse=reuse):
-    with tf.variable_scope('Branch_0'):
-      tower_conv = slim.conv2d(net, 192, 1, scope='Conv2d_1x1')
-    with tf.variable_scope('Branch_1'):
-      tower_conv1_0 = slim.conv2d(net, 192, 1, scope='Conv2d_0a_1x1')
-      tower_conv1_1 = slim.conv2d(tower_conv1_0, 224, [1, 3],
-                                  scope='Conv2d_0b_1x3')
-      tower_conv1_2 = slim.conv2d(tower_conv1_1, 256, [3, 1],
-                                  scope='Conv2d_0c_3x1')
-    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_2])
-    up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
-                     activation_fn=None, scope='Conv2d_1x1')
-
-    scaled_up = up * scale
-    if activation_fn == tf.nn.relu6:
-      # Use clip_by_value to simulate bandpass activation.
-      scaled_up = tf.clip_by_value(scaled_up, -6.0, 6.0)
-
-    net += scaled_up
-    if activation_fn:
-      net = activation_fn(net)
-  return net
-
-
-def inception_resnet_v2_base(inputs,
-                             final_endpoint='Conv2d_7b_1x1',
-                             output_stride=16,
-                             align_feature_maps=False,
-                             scope=None,
-                             activation_fn=tf.nn.relu):
-  """Inception model from  http://arxiv.org/abs/1602.07261.
-
-  Constructs an Inception Resnet v2 network from inputs to the given final
-  endpoint. This method can construct the network up to the final inception
-  block Conv2d_7b_1x1.
+  When putting together two consecutive ResNet blocks that use this unit, one
+  should use stride = 2 in the last unit of the first block.
 
   Args:
-    inputs: a tensor of size [batch_size, height, width, channels].
-    final_endpoint: specifies the endpoint to construct the network up to. It
-      can be one of ['Conv2d_1a_3x3', 'Conv2d_2a_3x3', 'Conv2d_2b_3x3',
-      'MaxPool_3a_3x3', 'Conv2d_3b_1x1', 'Conv2d_4a_3x3', 'MaxPool_5a_3x3',
-      'Mixed_5b', 'Mixed_6a', 'PreAuxLogits', 'Mixed_7a', 'Conv2d_7b_1x1']
-    output_stride: A scalar that specifies the requested ratio of input to
-      output spatial resolution. Only supports 8 and 16.
-    align_feature_maps: When true, changes all the VALID paddings in the network
-      to SAME padding so that the feature maps are aligned.
+    inputs: A tensor of size [batch, height, width, channels].
+    depth: The depth of the ResNet unit output.
+    depth_bottleneck: The depth of the bottleneck layers.
+    stride: The ResNet unit's stride. Determines the amount of downsampling of
+      the units output compared to its input.
+    rate: An integer, rate for atrous convolution.
+    outputs_collections: Collection to add the ResNet unit output.
     scope: Optional variable_scope.
-    activation_fn: Activation function for block scopes.
 
   Returns:
-    tensor_out: output tensor corresponding to the final_endpoint.
-    end_points: a set of activations for external use, for example summaries or
-                losses.
-
-  Raises:
-    ValueError: if final_endpoint is not set to one of the predefined values,
-      or if the output_stride is not 8 or 16, or if the output_stride is 8 and
-      we request an end point after 'PreAuxLogits'.
+    The ResNet unit's output.
   """
-  if output_stride != 8 and output_stride != 16:
-    raise ValueError('output_stride must be 8 or 16.')
+  with tf.variable_scope(scope, 'bottleneck_v2', [inputs]) as sc:
+    depth_in = slim.utils.last_dimension(inputs.get_shape(), min_rank=4)
+    preact = slim.batch_norm(inputs, activation_fn=tf.nn.relu, scope='preact')
+    if depth == depth_in:
+      shortcut = resnet_utils.subsample(inputs, stride, 'shortcut')
+    else:
+      shortcut = slim.conv2d(preact, depth, [1, 1], stride=stride,
+                             normalizer_fn=None, activation_fn=None,
+                             scope='shortcut')
 
-  padding = 'SAME' if align_feature_maps else 'VALID'
+    residual = slim.conv2d(preact, depth_bottleneck, [1, 1], stride=1,
+                           scope='conv1')
+    residual = resnet_utils.conv2d_same(residual, depth_bottleneck, 3, stride,
+                                        rate=rate, scope='conv2')
+    residual = slim.conv2d(residual, depth, [1, 1], stride=1,
+                           normalizer_fn=None, activation_fn=None,
+                           scope='conv3')
 
-  end_points = {}
+    output = shortcut + residual
 
-  def add_and_check_final(name, net):
-    end_points[name] = net
-    return name == final_endpoint
-
-  with tf.variable_scope(scope, 'InceptionResnetV2', [inputs]):
-    with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],
-                        stride=1, padding='SAME'):
-      # 149 x 149 x 32
-      net = slim.conv2d(inputs, 32, 3, stride=2, padding=padding,
-                        scope='Conv2d_1a_3x3')
-      if add_and_check_final('Conv2d_1a_3x3', net): return net, end_points
-
-      # 147 x 147 x 32
-      net = slim.conv2d(net, 32, 3, padding=padding,
-                        scope='Conv2d_2a_3x3')
-      if add_and_check_final('Conv2d_2a_3x3', net): return net, end_points
-      # 147 x 147 x 64
-      net = slim.conv2d(net, 64, 3, scope='Conv2d_2b_3x3')
-      if add_and_check_final('Conv2d_2b_3x3', net): return net, end_points
-      # 73 x 73 x 64
-      net = slim.max_pool2d(net, 3, stride=2, padding=padding,
-                            scope='MaxPool_3a_3x3')
-      if add_and_check_final('MaxPool_3a_3x3', net): return net, end_points
-      # 73 x 73 x 80
-      net = slim.conv2d(net, 80, 1, padding=padding,
-                        scope='Conv2d_3b_1x1')
-      if add_and_check_final('Conv2d_3b_1x1', net): return net, end_points
-      # 71 x 71 x 192
-      net = slim.conv2d(net, 192, 3, padding=padding,
-                        scope='Conv2d_4a_3x3')
-      if add_and_check_final('Conv2d_4a_3x3', net): return net, end_points
-      # 35 x 35 x 192
-      net = slim.max_pool2d(net, 3, stride=2, padding=padding,
-                            scope='MaxPool_5a_3x3')
-      if add_and_check_final('MaxPool_5a_3x3', net): return net, end_points
-
-      # 35 x 35 x 320
-      with tf.variable_scope('Mixed_5b'):
-        with tf.variable_scope('Branch_0'):
-          tower_conv = slim.conv2d(net, 96, 1, scope='Conv2d_1x1')
-        with tf.variable_scope('Branch_1'):
-          tower_conv1_0 = slim.conv2d(net, 48, 1, scope='Conv2d_0a_1x1')
-          tower_conv1_1 = slim.conv2d(tower_conv1_0, 64, 5,
-                                      scope='Conv2d_0b_5x5')
-        with tf.variable_scope('Branch_2'):
-          tower_conv2_0 = slim.conv2d(net, 64, 1, scope='Conv2d_0a_1x1')
-          tower_conv2_1 = slim.conv2d(tower_conv2_0, 96, 3,
-                                      scope='Conv2d_0b_3x3')
-          tower_conv2_2 = slim.conv2d(tower_conv2_1, 96, 3,
-                                      scope='Conv2d_0c_3x3')
-        with tf.variable_scope('Branch_3'):
-          tower_pool = slim.avg_pool2d(net, 3, stride=1, padding='SAME',
-                                       scope='AvgPool_0a_3x3')
-          tower_pool_1 = slim.conv2d(tower_pool, 64, 1,
-                                     scope='Conv2d_0b_1x1')
-        net = tf.concat(
-            [tower_conv, tower_conv1_1, tower_conv2_2, tower_pool_1], 3)
-
-      if add_and_check_final('Mixed_5b', net): return net, end_points
-      # TODO(alemi): Register intermediate endpoints
-      net = slim.repeat(net, 10, block35, scale=0.17,
-                        activation_fn=activation_fn)
-
-      # 17 x 17 x 1088 if output_stride == 8,
-      # 33 x 33 x 1088 if output_stride == 16
-      use_atrous = output_stride == 8
-
-      with tf.variable_scope('Mixed_6a'):
-        with tf.variable_scope('Branch_0'):
-          tower_conv = slim.conv2d(net, 384, 3, stride=1 if use_atrous else 2,
-                                   padding=padding,
-                                   scope='Conv2d_1a_3x3')
-        with tf.variable_scope('Branch_1'):
-          tower_conv1_0 = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
-          tower_conv1_1 = slim.conv2d(tower_conv1_0, 256, 3,
-                                      scope='Conv2d_0b_3x3')
-          tower_conv1_2 = slim.conv2d(tower_conv1_1, 384, 3,
-                                      stride=1 if use_atrous else 2,
-                                      padding=padding,
-                                      scope='Conv2d_1a_3x3')
-        with tf.variable_scope('Branch_2'):
-          tower_pool = slim.max_pool2d(net, 3, stride=1 if use_atrous else 2,
-                                       padding=padding,
-                                       scope='MaxPool_1a_3x3')
-        net = tf.concat([tower_conv, tower_conv1_2, tower_pool], 3)
-
-      if add_and_check_final('Mixed_6a', net): return net, end_points
-
-      # TODO(alemi): register intermediate endpoints
-      with slim.arg_scope([slim.conv2d], rate=2 if use_atrous else 1):
-        net = slim.repeat(net, 20, block17, scale=0.10,
-                          activation_fn=activation_fn)
-      if add_and_check_final('PreAuxLogits', net): return net, end_points
-
-      if output_stride == 8:
-        # TODO(gpapan): Properly support output_stride for the rest of the net.
-        raise ValueError('output_stride==8 is only supported up to the '
-                         'PreAuxlogits end_point for now.')
-
-      # 8 x 8 x 2080
-      with tf.variable_scope('Mixed_7a'):
-        with tf.variable_scope('Branch_0'):
-          tower_conv = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
-          tower_conv_1 = slim.conv2d(tower_conv, 384, 3, stride=2,
-                                     padding=padding,
-                                     scope='Conv2d_1a_3x3')
-        with tf.variable_scope('Branch_1'):
-          tower_conv1 = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
-          tower_conv1_1 = slim.conv2d(tower_conv1, 288, 3, stride=2,
-                                      padding=padding,
-                                      scope='Conv2d_1a_3x3')
-        with tf.variable_scope('Branch_2'):
-          tower_conv2 = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
-          tower_conv2_1 = slim.conv2d(tower_conv2, 288, 3,
-                                      scope='Conv2d_0b_3x3')
-          tower_conv2_2 = slim.conv2d(tower_conv2_1, 320, 3, stride=2,
-                                      padding=padding,
-                                      scope='Conv2d_1a_3x3')
-        with tf.variable_scope('Branch_3'):
-          tower_pool = slim.max_pool2d(net, 3, stride=2,
-                                       padding=padding,
-                                       scope='MaxPool_1a_3x3')
-        net = tf.concat(
-            [tower_conv_1, tower_conv1_1, tower_conv2_2, tower_pool], 3)
-
-      if add_and_check_final('Mixed_7a', net): return net, end_points
-
-      # TODO(alemi): register intermediate endpoints
-      net = slim.repeat(net, 9, block8, scale=0.20, activation_fn=activation_fn)
-      net = block8(net, activation_fn=None)
-
-      # 8 x 8 x 1536
-      net = slim.conv2d(net, 1536, 1, scope='Conv2d_7b_1x1')
-      if add_and_check_final('Conv2d_7b_1x1', net): return net, end_points
-
-    raise ValueError('final_endpoint (%s) not recognized', final_endpoint)
+    return slim.utils.collect_named_outputs(outputs_collections,
+                                            sc.name,
+                                            output)
 
 
-def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
-                        dropout_keep_prob=0.8,
-                        reuse=None,
-                        scope='InceptionResnetV2',
-                        create_aux_logits=True,
-                        activation_fn=tf.nn.relu):
-  """Creates the Inception Resnet V2 model.
+def resnet_v2(inputs,
+              blocks,
+              num_classes=None,
+              is_training=True,
+              global_pool=True,
+              output_stride=None,
+              include_root_block=True,
+              spatial_squeeze=True,
+              reuse=None,
+              scope=None):
+  """Generator for v2 (preactivation) ResNet models.
+
+  This function generates a family of ResNet v2 models. See the resnet_v2_*()
+  methods for specific model instantiations, obtained by selecting different
+  block instantiations that produce ResNets of various depths.
+
+  Training for image classification on Imagenet is usually done with [224, 224]
+  inputs, resulting in [7, 7] feature maps at the output of the last ResNet
+  block for the ResNets defined in [1] that have nominal stride equal to 32.
+  However, for dense prediction tasks we advise that one uses inputs with
+  spatial dimensions that are multiples of 32 plus 1, e.g., [321, 321]. In
+  this case the feature maps at the ResNet output will have spatial shape
+  [(height - 1) / output_stride + 1, (width - 1) / output_stride + 1]
+  and corners exactly aligned with the input image corners, which greatly
+  facilitates alignment of the features to the image. Using as input [225, 225]
+  images results in [8, 8] feature maps at the output of the last ResNet block.
+
+  For dense prediction tasks, the ResNet needs to run in fully-convolutional
+  (FCN) mode and global_pool needs to be set to False. The ResNets in [1, 2] all
+  have nominal stride equal to 32 and a good choice in FCN mode is to use
+  output_stride=16 in order to increase the density of the computed features at
+  small computational and memory overhead, cf. http://arxiv.org/abs/1606.00915.
 
   Args:
-    inputs: a 4-D tensor of size [batch_size, height, width, 3].
-      Dimension batch_size may be undefined. If create_aux_logits is false,
-      also height and width may be undefined.
-    num_classes: number of predicted classes. If 0 or None, the logits layer
-      is omitted and the input features to the logits layer (before  dropout)
-      are returned instead.
-    is_training: whether is training or not.
-    dropout_keep_prob: float, the fraction to keep before final layer.
+    inputs: A tensor of size [batch, height_in, width_in, channels].
+    blocks: A list of length equal to the number of ResNet blocks. Each element
+      is a resnet_utils.Block object describing the units in the block.
+    num_classes: Number of predicted classes for classification tasks.
+      If 0 or None, we return the features before the logit layer.
+    is_training: whether batch_norm layers are in training mode.
+    global_pool: If True, we perform global average pooling before computing the
+      logits. Set to True for image classification, False for dense prediction.
+    output_stride: If None, then the output will be computed at the nominal
+      network stride. If output_stride is not None, it specifies the requested
+      ratio of input to output spatial resolution.
+    include_root_block: If True, include the initial convolution followed by
+      max-pooling, if False excludes it. If excluded, `inputs` should be the
+      results of an activation-less convolution.
+    spatial_squeeze: if True, logits is of shape [B, C], if false logits is
+        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
+        To use this parameter, the input images must be smaller than 300x300
+        pixels, in which case the output logit layer does not contain spatial
+        information and can be removed.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
-    create_aux_logits: Whether to include the auxilliary logits.
-    activation_fn: Activation function for conv2d.
+
 
   Returns:
-    net: the output of the logits layer (if num_classes is a non-zero integer),
-      or the non-dropped-out input to the logits layer (if num_classes is 0 or
-      None).
-    end_points: the set of end_points from the inception model.
+    net: A rank-4 tensor of size [batch, height_out, width_out, channels_out].
+      If global_pool is False, then height_out and width_out are reduced by a
+      factor of output_stride compared to the respective height_in and width_in,
+      else both height_out and width_out equal one. If num_classes is 0 or None,
+      then net is the output of the last ResNet block, potentially after global
+      average pooling. If num_classes is a non-zero integer, net contains the
+      pre-softmax activations.
+    end_points: A dictionary from components of the network to the corresponding
+      activation.
+
+  Raises:
+    ValueError: If the target output_stride is not valid.
   """
-  end_points = {}
+  with tf.variable_scope(scope, 'resnet_v2', [inputs], reuse=reuse) as sc:
+    end_points_collection = sc.original_name_scope + '_end_points'
+    with slim.arg_scope([slim.conv2d, bottleneck,
+                         resnet_utils.stack_blocks_dense],
+                        outputs_collections=end_points_collection):
+      with slim.arg_scope([slim.batch_norm], is_training=is_training):
+        net = inputs
+        if include_root_block:
+          if output_stride is not None:
+            if output_stride % 4 != 0:
+              raise ValueError('The output_stride needs to be a multiple of 4.')
+            output_stride /= 4
+          # We do not include batch normalization or activation functions in
+          # conv1 because the first ResNet unit will perform these. Cf.
+          # Appendix of [2].
+          with slim.arg_scope([slim.conv2d],
+                              activation_fn=None, normalizer_fn=None):
+            net = resnet_utils.conv2d_same(net, 64, 7, stride=2, scope='conv1')
+          net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1')
+        net = resnet_utils.stack_blocks_dense(net, blocks, output_stride)
+        # This is needed because the pre-activation variant does not have batch
+        # normalization or activation functions in the residual unit output. See
+        # Appendix of [2].
+        net = slim.batch_norm(net, activation_fn=tf.nn.relu, scope='postnorm')
+        # Convert end_points_collection into a dictionary of end_points.
+        end_points = slim.utils.convert_collection_to_dict(
+            end_points_collection)
 
-  with tf.variable_scope(scope, 'InceptionResnetV2', [inputs],
-                         reuse=reuse) as scope:
-    with slim.arg_scope([slim.batch_norm, slim.dropout],
-                        is_training=is_training):
-
-      net, end_points = inception_resnet_v2_base(inputs, scope=scope,
-                                                 activation_fn=activation_fn)
-
-      if create_aux_logits and num_classes:
-        with tf.variable_scope('AuxLogits'):
-          aux = end_points['PreAuxLogits']
-          aux = slim.avg_pool2d(aux, 5, stride=3, padding='VALID',
-                                scope='Conv2d_1a_3x3')
-          aux = slim.conv2d(aux, 128, 1, scope='Conv2d_1b_1x1')
-          aux = slim.conv2d(aux, 768, aux.get_shape()[1:3],
-                            padding='VALID', scope='Conv2d_2a_5x5')
-          aux = slim.flatten(aux)
-          aux = slim.fully_connected(aux, num_classes, activation_fn=None,
-                                     scope='Logits')
-          end_points['AuxLogits'] = aux
-
-      with tf.variable_scope('Logits'):
-        # TODO(sguada,arnoegw): Consider adding a parameter global_pool which
-        # can be set to False to disable pooling here (as in resnet_*()).
-        kernel_size = net.get_shape()[1:3]
-        if kernel_size.is_fully_defined():
-          net = slim.avg_pool2d(net, kernel_size, padding='VALID',
-                                scope='AvgPool_1a_8x8')
-        else:
-          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
-        end_points['global_pool'] = net
-        if not num_classes:
-          return net, end_points
-        net = slim.flatten(net)
-        net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
-                           scope='Dropout')
-        end_points['PreLogitsFlatten'] = net
-        logits = slim.fully_connected(net, num_classes, activation_fn=None,
-                                      scope='Logits')
-        end_points['Logits'] = logits
-        end_points['Predictions'] = tf.nn.softmax(logits, name='Predictions')
-
-    return logits, end_points
-inception_resnet_v2.default_image_size = 299
+        if global_pool:
+          # Global average pooling.
+          net = tf.reduce_mean(net, [1, 2], name='pool5', keep_dims=True)
+          end_points['global_pool'] = net
+        if num_classes:
+          net = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
+                            normalizer_fn=None, scope='logits')
+          end_points[sc.name + '/logits'] = net
+          if spatial_squeeze:
+            net = tf.squeeze(net, [1, 2], name='SpatialSqueeze')
+            end_points[sc.name + '/spatial_squeeze'] = net
+          end_points['predictions'] = slim.softmax(net, scope='predictions')
+        return net, end_points
+resnet_v2.default_image_size = 224
 
 
-def inception_resnet_v2_arg_scope(
-    weight_decay=0.00004,
-    batch_norm_decay=0.9997,
-    batch_norm_epsilon=0.001,
-    activation_fn=tf.nn.relu,
-    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS,
-    batch_norm_scale=False):
-  """Returns the scope with the default parameters for inception_resnet_v2.
+def resnet_v2_block(scope, base_depth, num_units, stride):
+  """Helper function for creating a resnet_v2 bottleneck block.
 
   Args:
-    weight_decay: the weight decay for weights variables.
-    batch_norm_decay: decay for the moving average of batch_norm momentums.
-    batch_norm_epsilon: small float added to variance to avoid dividing by zero.
-    activation_fn: Activation function for conv2d.
-    batch_norm_updates_collections: Collection for the update ops for
-      batch norm.
-    batch_norm_scale: If True, uses an explicit `gamma` multiplier to scale the
-      activations in the batch normalization layer.
+    scope: The scope of the block.
+    base_depth: The depth of the bottleneck layer for each unit.
+    num_units: The number of units in the block.
+    stride: The stride of the block, implemented as a stride in the last unit.
+      All other units have stride=1.
 
   Returns:
-    a arg_scope with the parameters needed for inception_resnet_v2.
+    A resnet_v2 bottleneck block.
   """
-  # Set weight_decay for weights in conv2d and fully_connected layers.
-  with slim.arg_scope([slim.conv2d, slim.fully_connected],
-                      weights_regularizer=slim.l2_regularizer(weight_decay),
-                      biases_regularizer=slim.l2_regularizer(weight_decay)):
+  return resnet_utils.Block(scope, bottleneck, [{
+      'depth': base_depth * 4,
+      'depth_bottleneck': base_depth,
+      'stride': 1
+  }] * (num_units - 1) + [{
+      'depth': base_depth * 4,
+      'depth_bottleneck': base_depth,
+      'stride': stride
+  }])
+resnet_v2.default_image_size = 224
 
-    batch_norm_params = {
-        'decay': batch_norm_decay,
-        'epsilon': batch_norm_epsilon,
-        'updates_collections': batch_norm_updates_collections,
-        'fused': None,  # Use fused batch norm if possible.
-        'scale': batch_norm_scale,
-    }
-    # Set activation_fn and parameters for batch_norm.
-    with slim.arg_scope([slim.conv2d], activation_fn=activation_fn,
-                        normalizer_fn=slim.batch_norm,
-                        normalizer_params=batch_norm_params) as scope:
-      return scope
+
+def resnet_v2_50(inputs,
+                 num_classes=None,
+                 is_training=True,
+                 global_pool=True,
+                 output_stride=None,
+                 spatial_squeeze=True,
+                 reuse=None,
+                 scope='resnet_v2_50'):
+  """ResNet-50 model of [1]. See resnet_v2() for arg and return description."""
+  blocks = [
+      resnet_v2_block('block1', base_depth=64, num_units=3, stride=2),
+      resnet_v2_block('block2', base_depth=128, num_units=4, stride=2),
+      resnet_v2_block('block3', base_depth=256, num_units=6, stride=2),
+      resnet_v2_block('block4', base_depth=512, num_units=3, stride=1),
+  ]
+  return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
+                   global_pool=global_pool, output_stride=output_stride,
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v2_50.default_image_size = resnet_v2.default_image_size
+
+
+def resnet_v2_101(inputs,
+                  num_classes=None,
+                  is_training=True,
+                  global_pool=True,
+                  output_stride=None,
+                  spatial_squeeze=True,
+                  reuse=None,
+                  scope='resnet_v2_101'):
+  """ResNet-101 model of [1]. See resnet_v2() for arg and return description."""
+  blocks = [
+      resnet_v2_block('block1', base_depth=64, num_units=3, stride=2),
+      resnet_v2_block('block2', base_depth=128, num_units=4, stride=2),
+      resnet_v2_block('block3', base_depth=256, num_units=23, stride=2),
+      resnet_v2_block('block4', base_depth=512, num_units=3, stride=1),
+  ]
+  return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
+                   global_pool=global_pool, output_stride=output_stride,
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v2_101.default_image_size = resnet_v2.default_image_size
+
+
+def resnet_v2_152(inputs,
+                  num_classes=None,
+                  is_training=True,
+                  global_pool=True,
+                  output_stride=None,
+                  spatial_squeeze=True,
+                  reuse=None,
+                  scope='resnet_v2_152'):
+  """ResNet-152 model of [1]. See resnet_v2() for arg and return description."""
+  blocks = [
+      resnet_v2_block('block1', base_depth=64, num_units=3, stride=2),
+      resnet_v2_block('block2', base_depth=128, num_units=8, stride=2),
+      resnet_v2_block('block3', base_depth=256, num_units=36, stride=2),
+      resnet_v2_block('block4', base_depth=512, num_units=3, stride=1),
+  ]
+  return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
+                   global_pool=global_pool, output_stride=output_stride,
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v2_152.default_image_size = resnet_v2.default_image_size
+
+
+def resnet_v2_200(inputs,
+                  num_classes=None,
+                  is_training=True,
+                  global_pool=True,
+                  output_stride=None,
+                  spatial_squeeze=True,
+                  reuse=None,
+                  scope='resnet_v2_200'):
+  """ResNet-200 model of [2]. See resnet_v2() for arg and return description."""
+  blocks = [
+      resnet_v2_block('block1', base_depth=64, num_units=3, stride=2),
+      resnet_v2_block('block2', base_depth=128, num_units=24, stride=2),
+      resnet_v2_block('block3', base_depth=256, num_units=36, stride=2),
+      resnet_v2_block('block4', base_depth=512, num_units=3, stride=1),
+  ]
+  return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
+                   global_pool=global_pool, output_stride=output_stride,
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v2_200.default_image_size = resnet_v2.default_image_size
