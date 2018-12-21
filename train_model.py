@@ -94,16 +94,14 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # 2) content loss
 
-    CONTENT_LAYER = 'relu5_4'
+    enhanced_nasnet = content_net.net(enhanced * 255)
+    dslr_nasnet = content_net.net(dslr_image * 255)
 
     init_fn = slim.assign_from_checkpoint_fn(
         'vgg_pretrained/inception_resnet_v2_2016_08_30.ckpt',
         slim.get_model_variables('InceptionResnetV2'))
 
     init_fn(sess)
-
-    enhanced_nasnet = content_net.net(enhanced * 255)
-    dslr_nasnet = content_net.net(dslr_image * 255)
 
     content_size = utils._tensor_size(enhanced_nasnet) * batch_size
     loss_content = 2 * tf.nn.l2_loss(enhanced_nasnet - dslr_nasnet) / content_size
