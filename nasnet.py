@@ -12,7 +12,8 @@ def net(images, weights_path='./NasNet_pretrain/inception_resnet_v2_weights_tf_d
     model = tf.keras.applications.inception_resnet_v2.InceptionResNetV2(
         weights=weights_path,
         input_tensor=images,
-        include_top=False
+        include_top=False,
+        pooling='max'
     )
 
     for layer in model.layers:
