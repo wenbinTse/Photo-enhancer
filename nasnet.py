@@ -15,6 +15,9 @@ def net(images, weights_path='./NasNet_pretrain/inception_resnet_v2_weights_tf_d
         include_top=False
     )
 
+    for layer in model.layers:
+        layer.trainable = False
+
     result = model.layers[-1].output
 
     return result
