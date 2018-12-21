@@ -81,8 +81,8 @@ def load_batch(phone, dped_dir, TRAIN_SIZE, IMAGE_SIZE):
             phone_patch, dslr_patch = np.rot90(dslr_patch, axes=0), np.rot90(dslr_patch, axes=0)
 
         phone_patch, dslr_patch = preprocess(phone_patch), preprocess(dslr_patch)
-        dslr_patch, dslr_patch = np.float32(np.reshape((dslr_patch, [1, IMAGE_SIZE]))), \
-            np.float32(np.reshape((dslr_patch, [1, IMAGE_SIZE])))
+        dslr_patch, dslr_patch = np.float32(np.reshape(dslr_patch, [1, IMAGE_SIZE])), \
+            np.float32(np.reshape(dslr_patch, [1, IMAGE_SIZE]))
 
 
         train_data[i, :] = phone_patch
