@@ -20,6 +20,7 @@ import content_net
 PATCH_WIDTH = 100
 PATCH_HEIGHT = 100
 PATCH_SIZE = PATCH_WIDTH * PATCH_HEIGHT * 3
+mean_RGB = np.array([123.68,  116.779,  103.939])
 
 # processing command arguments
 
@@ -94,8 +95,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # 2) content loss
 
-    enhanced_nasnet = content_net.net(enhanced * 255)
-    dslr_nasnet = content_net.net(dslr_image * 255)
+    enhanced_nasnet = content_net.net((enhanced * 255 + mean_RGB) / 255)
+    dslr_nasnet = content_net.net((dslr_image * 255 + mean_RGB) / 255)
 
     init_fn = slim.assign_from_checkpoint_fn(
         'vgg_pretrained/resnet_v2_101.ckpt',
