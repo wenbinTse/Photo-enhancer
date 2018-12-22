@@ -17,8 +17,8 @@ def new_conv_layer(inputs, filters, kernel_size, stride, name, training, norm=Tr
         padding='SAME'
     )
 
-    if norm:
-        result = batch_norm_layer(result, training)
+    # if norm:
+    #     result = batch_norm_layer(result, training)
     if relu:
         result = new_leaky_relu(result)
     return result
@@ -119,7 +119,9 @@ def u_net(input_image, training):
             l16 = new_conv_layer(l15_concat, 16, 3, 1, 'conv7', training)
             l17 = new_conv_layer(l16, 3, 3, 1, 'conv8', training, norm=False, relu=False)
 
-            l18 = add_layer(l17, input_image)
+            l18 = tf.layers.conv2d(l17, 3, 1, 1, padding="SAME", kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+            # l18 = add_layer(l17, input_image)
             # l18 = tf.nn.sigmoid(l17)
 
             return l18

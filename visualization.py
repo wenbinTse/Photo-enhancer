@@ -45,4 +45,4 @@ def show(path, all=True):
 
 
 if __name__ == '__main__':
-    show('u_net_remove_the_last_concat_layer/models', False)
+    show('change_gan/models', False)
