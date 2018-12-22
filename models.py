@@ -17,8 +17,8 @@ def new_conv_layer(inputs, filters, kernel_size, stride, name, training, norm=Tr
         padding='SAME'
     )
 
-    if norm:
-        result = batch_norm_layer(result, training)
+    # if norm:
+    #     result = batch_norm_layer(result, training)
     if relu:
         result = new_leaky_relu(result)
     return result
@@ -36,8 +36,8 @@ def global_concat_layer(inputs, concated):
 
 def concat_layer(inputs, concated, training, norm=True, relu=True):
     tensor = tf.concat([inputs, concated], 3)
-    if norm:
-        tensor = batch_norm_layer(tensor, training)
+    # if norm:
+    #     tensor = batch_norm_layer(tensor, training)
     if relu:
         tensor = selu_layer(tensor)
     return tensor
