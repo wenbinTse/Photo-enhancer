@@ -38,9 +38,9 @@ def process_command_args(arguments):
     learning_rate = 5e-4
     num_train_iters = 20000
 
-    w_content = 2
-    w_color = 5
-    w_texture = 10
+    w_content = 5
+    w_color = 8
+    w_texture = 15
     w_tv = 0.0025
 
     dped_dir = 'dped/'
