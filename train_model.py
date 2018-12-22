@@ -6,7 +6,7 @@ import numpy as np
 import sys
 import os
 
-from load_dataset import load_test_data, load_batch, postprocess
+from load_dataset import load_test_data, load_batch, postprocess, postprocess_tf
 from ssim import MultiScaleSSIM
 import models
 import utils
@@ -115,10 +115,9 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # psnr loss
 
-    enhanced_flat = tf.reshape(enhanced, [-1, PATCH_SIZE])
 
-    loss_mse = tf.reduce_sum(tf.pow(dslr_ - enhanced_flat, 2))/(PATCH_SIZE * batch_size)
-    loss_psnr = 20 * utils.log10(1.0 / tf.sqrt(loss_mse))
+    loss_mse = tf.reduce_sum(tf.pow(postprocess_tf(dslr_image) - postprocess_tf(enhanced), 2))/(PATCH_SIZE * batch_size)
+    loss_psnr = 20 * utils.log10(255.0 / tf.sqrt(loss_mse))
 
     # optimize parameters of image enhancement (generator) and discriminator networks
 
