@@ -116,8 +116,9 @@ with tf.Graph().as_default(), tf.Session() as sess:
     # psnr loss
 
 
-    loss_mse = tf.reduce_sum(tf.pow(postprocess_tf(dslr_image) - postprocess_tf(enhanced), 2))/(PATCH_SIZE * batch_size)
-    loss_psnr = 20 * utils.log10(255.0 / tf.sqrt(loss_mse))
+    # loss_mse = tf.reduce_sum(tf.pow(postprocess_tf(dslr_image) - postprocess_tf(enhanced), 2))/(PATCH_SIZE * batch_size)
+    loss_mse = tf.reduce_mean(tf.pow(postprocess_tf(dslr_image) - postprocess_tf(enhanced), 2), axis=[1, 2, 3])
+    loss_psnr = tf.reduce_mean(20 * utils.log10(255.0 / tf.sqrt(loss_mse)))
 
     # optimize parameters of image enhancement (generator) and discriminator networks
 
