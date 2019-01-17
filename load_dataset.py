@@ -74,10 +74,10 @@ def load_batch(phone, dped_dir, TRAIN_SIZE, IMAGE_SIZE):
         phone_patch = np.asarray(misc.imread(train_directory_phone + str(img) + '.jpg'))
         dslr_patch = np.asarray(misc.imread(train_directory_dslr + str(img) + '.jpg'))
 
-        prob = np.random.rand()
-        if prob > 0.5:
-            phone_patch = np.rot90(phone_patch)
-            dslr_patch = np.rot90(dslr_patch)
+        # prob = np.random.rand()
+        # if prob > 0.5:
+        #     phone_patch = np.rot90(phone_patch)
+        #     dslr_patch = np.rot90(dslr_patch)
 
         phone_patch, dslr_patch = preprocess(phone_patch), preprocess(dslr_patch)
         phone_patch, dslr_patch = np.float32(np.reshape(phone_patch, [1, IMAGE_SIZE])), \

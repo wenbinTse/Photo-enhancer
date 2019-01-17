@@ -78,16 +78,27 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # losses
     # 1) texture (adversarial) loss
-    d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, tf.ones_like(probs_dslr)))
-    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.zeros_like(probs_enhanced)))
-    loss_discrim = d_loss_fake + d_loss_real
+
+    ###########################################
+    # 类DCGAN的交叉熵
+    # d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, tf.ones_like(probs_dslr)))
+    # d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.zeros_like(probs_enhanced)))
+    # loss_discrim = d_loss_fake + d_loss_real
+    ############################################
+    # WGAN
+    loss_discrim = tf.reduce_mean(logits_enhanced - logits_dslr)
 
     half = 0.5
     phone_accuracy = tf.reduce_mean(tf.cast(tf.less_equal(probs_enhanced, half), tf.float32))
     dslr_accuracy = tf.reduce_mean(tf.cast(tf.greater(probs_dslr, half), tf.float32))
     discim_accuracy = (phone_accuracy + dslr_accuracy) / 2
 
-    loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.ones_like(probs_enhanced)))
+    ###########################################
+    # 类DCGAN的交叉熵
+    # loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.ones_like(probs_enhanced)))
+    ############################################
+    # WGAN
+    loss_texture = tf.reduce_mean(-logits_enhanced)
 
     # 2) content loss
 
@@ -124,8 +135,6 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     generator_vars = [v for v in tf.global_variables() if v.name.startswith("generator")]
     discriminator_vars = [v for v in tf.global_variables() if v.name.startswith("discriminator")]
-    discriminator_vars_name = [v.name for v in discriminator_vars]
-    print(discriminator_vars_name)
 
     learning_rate = tf.train.exponential_decay(5e-3, global_step, decay_steps=1000, decay_rate=0.8,
                                                staircase=True)
@@ -133,11 +142,21 @@ with tf.Graph().as_default(), tf.Session() as sess:
     learning_rate = tf.maximum(learning_rate, 5e-5)
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        train_step_gen = tf.train.AdamOptimizer(learning_rate)\
-            .minimize(loss_generator, var_list=generator_vars, global_step=global_step)
-    train_step_disc = tf.train.AdamOptimizer(learning_rate).minimize(loss_discrim, var_list=discriminator_vars)
+    ############################################
+    # 使用Adam
+    # with tf.control_dependencies(update_ops):
+    #     train_step_gen = tf.train.AdamOptimizer(learning_rate)\
+    #         .minimize(loss_generator, var_list=generator_vars, global_step=global_step)
+    # train_step_disc = tf.train.AdamOptimizer(learning_rate).minimize(loss_discrim, var_list=discriminator_vars)
 
+    ############################################
+    # 使用RMSProp（WGAN推荐）
+    with tf.control_dependencies(update_ops):
+        train_step_gen = tf.train.RMSPropOptimizer(learning_rate)\
+            .minimize(loss_generator, var_list=generator_vars, global_step=global_step)
+    train_step_disc = tf.train.RMSPropOptimizer(learning_rate).minimize(loss_discrim, var_list=discriminator_vars)
+    d_clip = [v.assign(tf.clip_by_value(v, -0.01, 0.01)) for v in discriminator_vars]
+    #############################################
     saver = tf.train.Saver(var_list=generator_vars, max_to_keep=100)
 
     print('Initializing variables')
@@ -159,8 +178,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     #################################################################
     # summary
-    _ = tf.summary.scalar('d_loss_real/train', tensor=d_loss_real, collections=['train'])
-    _ = tf.summary.scalar('d_loss_fake/train', tensor=d_loss_fake, collections=['train'])
+    # _ = tf.summary.scalar('d_loss_real/train', tensor=d_loss_real, collections=['train'])
+    # _ = tf.summary.scalar('d_loss_fake/train', tensor=d_loss_fake, collections=['train'])
     _ = tf.summary.scalar('loss_discrim/train', tensor=loss_discrim, collections=['train'])
     _ = tf.summary.scalar('phone_accuracy/train', tensor=phone_accuracy, collections=['train'])
     _ = tf.summary.scalar('dslr_accuracy/train', tensor=dslr_accuracy, collections=['train'])
@@ -174,8 +193,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
     _ = tf.summary.image('dslr/train', tensor=dslr_image, collections=['train'])
     _ = tf.summary.image('phone/train', tensor=phone_image, collections=['train'])
 
-    _ = tf.summary.scalar('d_loss_real/val', tensor=d_loss_real, collections=['val'])
-    _ = tf.summary.scalar('d_loss_fake/val', tensor=d_loss_fake, collections=['val'])
+    # _ = tf.summary.scalar('d_loss_real/val', tensor=d_loss_real, collections=['val'])
+    # _ = tf.summary.scalar('d_loss_fake/val', tensor=d_loss_fake, collections=['val'])
     _ = tf.summary.scalar('loss_discrim/val', tensor=loss_discrim, collections=['val'])
     _ = tf.summary.scalar('phone_accuracy/val', tensor=phone_accuracy, collections=['val'])
     _ = tf.summary.scalar('dslr_accuracy/val', tensor=dslr_accuracy, collections=['val'])
@@ -209,12 +228,15 @@ with tf.Graph().as_default(), tf.Session() as sess:
         train_loss_gen += loss_temp / eval_step
 
         # train discriminator
-        train_disc_step = 10
+        train_disc_step = 1
         if i % train_disc_step == 0:
             idx_train = np.random.randint(0, train_size, batch_size)
 
             phone_images = train_data[idx_train]
             dslr_images = train_answ[idx_train]
+
+            # clip weight(wgan)
+            sess.run(d_clip)
 
             [accuracy_temp, temp, summaries_val] = sess.run([discim_accuracy, train_step_disc, summaries_op],
                                             feed_dict={phone_: phone_images, dslr_: dslr_images, training: True})

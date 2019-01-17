@@ -8,6 +8,7 @@ names = [
 
 def show(path, all=True):
     file = open('./history/{}/iphone.txt'.format(path), 'r')
+    format_file = open('./history/{}/format.csv'.format(path), 'w')
 
     vals = [[] for _ in range(10)]
     steps = []
@@ -23,26 +24,39 @@ def show(path, all=True):
 
     print(steps)
 
-    for idx, val in enumerate(vals):
-        if all:
-            plt.subplot(5, 2, idx+1)
-            plt.scatter(steps, val)
-            plt.plot(steps,val, label=names[idx])
-            plt.legend()
-        else:
-            plt.figure(figsize=(15, 7))
-            plt.scatter(steps, val)
-            for i, v in enumerate(val):
-                if i % 3 == 0:
-                    plt.annotate(v, (steps[i], v))
-            plt.plot(steps,val, label=names[idx])
-            plt.legend()
-            plt.savefig('{}_{}.jpg'.format(path.split('/')[0], names[idx]))
-            plt.close()
+    # for idx, val in enumerate(vals):
+    #     if all:
+    #         plt.subplot(5, 2, idx+1)
+    #         plt.scatter(steps, val)
+    #         plt.plot(steps,val, label=names[idx])
+    #         plt.legend()
+    #     else:
+    #         plt.figure(figsize=(15, 7))
+    #         plt.scatter(steps, val)
+    #         for i, v in enumerate(val):
+    #             if i % 3 == 0:
+    #                 plt.annotate(v, (steps[i], v))
+    #         plt.plot(steps, val, label=names[idx])
+    #         plt.legend()
+    #         plt.savefig('{}_{}.jpg'.format(path.split('/')[0], names[idx]))
+    #         plt.close()
+    #
+    # if all:
+    #     plt.show()
 
-    if all:
-        plt.show()
+    ###########################
+    # save to csv
+    title = 'step'
+    for name in names:
+        title += ',' + name
+    format_file.write(title + '\n')
+    for idx, step in enumerate(steps):
+        tmp = str(step)
+        for i in range(10):
+            tmp += ',' + str(vals[i][idx])
+        tmp += '\n'
+        format_file.write(tmp)
 
 
 if __name__ == '__main__':
-    show('u_net_remove_the_last_concat_layer/models', False)
+    show('last/models', False)

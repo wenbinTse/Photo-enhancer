@@ -5,8 +5,9 @@ import tensorflow as tf
 from scipy import misc
 import numpy as np
 from models import u_net
+from load_dataset import preprocess
 
-model_name = './history/u_net_remove_the_last_concat_layer/models/iphone_iteration_25000.ckpt'
+model_name = './history/last/models/iphone_iteration_22000.ckpt'
 
 inited = False
 images_plh = tf.placeholder(tf.float32, [None, None, None, 3])
@@ -17,9 +18,16 @@ sess = tf.Session()
 saver = tf.train.Saver()
 saver.restore(sess, model_name)
 
+image_net_process = True
+
 def test(file_name, result_name='result.jpg'):
-    image = misc.imread(file_name) / 255
+    image = misc.imread(file_name, mode='RGB')
     assert len(image.shape) == 3, '只处理彩色照片'
+    if image_net_process:
+        image = preprocess(image)
+    else:
+        image = image / 255
+
     images = np.expand_dims(image, 0)
     print(images.shape)
 
