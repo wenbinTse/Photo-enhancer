@@ -81,12 +81,12 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     ###########################################
     # 类DCGAN的交叉熵
-    # d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, tf.ones_like(probs_dslr)))
-    # d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.zeros_like(probs_enhanced)))
-    # loss_discrim = d_loss_fake + d_loss_real
-    ############################################
+    d_loss_real = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_dslr, tf.ones_like(probs_dslr)))
+    d_loss_fake = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.zeros_like(probs_enhanced)))
+    loss_discrim = d_loss_fake + d_loss_real
+    ###########################################
     # WGAN
-    loss_discrim = tf.reduce_mean(logits_enhanced - logits_dslr)
+    # loss_discrim = tf.reduce_mean(logits_enhanced - logits_dslr)
 
     half = 0.5
     phone_accuracy = tf.reduce_mean(tf.cast(tf.less_equal(probs_enhanced, half), tf.float32))
@@ -95,10 +95,10 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     ###########################################
     # 类DCGAN的交叉熵
-    # loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.ones_like(probs_enhanced)))
+    loss_texture = tf.reduce_mean(utils.sigmoid_cross_entropy_with_logits(logits_enhanced, tf.ones_like(probs_enhanced)))
     ############################################
     # WGAN
-    loss_texture = tf.reduce_mean(-logits_enhanced)
+    # loss_texture = tf.reduce_mean(-logits_enhanced)
 
     # 2) content loss
 
@@ -207,7 +207,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
     summaries_op = tf.summary.merge_all('train')
     summaries_val_op = tf.summary.merge_all('val')
 
-    folder_summary = 'summary_tv_loss_and_texture_loss'
+    folder_summary = 'summary'
     if not os.path.exists(folder_summary):
         os.makedirs(folder_summary)
 
