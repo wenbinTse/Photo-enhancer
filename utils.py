@@ -49,6 +49,8 @@ def process_command_args(arguments):
 
     phone = ""
     last_step = -1 # 用于控制是否继续训练
+    wgan = 0 # 是否使用wgan（如果使用的话，要修改权重）
+    concat = 0 #默认0，表示不把原始照片和增强照片（或高清照片）拼接起来喂给判别器，其它输入反之。
 
     for args in arguments:
 
@@ -95,6 +97,14 @@ def process_command_args(arguments):
         if args.startswith("last_step"):
             last_step = int(args.split('=')[1])
 
+        if args.startswith("wgan"):
+            wgan = int(args.split('=')[1])
+        wgan = False if wgan == 0 else True
+
+        if args.startswith("concat"):
+            concat = int(args.split('=')[1])
+        concat = False if concat == 0 else True
+
     if phone == "":
         print("\nPlease specify the camera model by running the script with the following parameter:\n")
         print("python train_model.py model={iphone,blackberry,sony}\n")
@@ -126,7 +136,7 @@ def process_command_args(arguments):
         print('last step: ', last_step)
     return phone, batch_size, train_size, learning_rate, num_train_iters, \
             w_content, w_color, w_texture, w_tv,\
-            dped_dir, vgg_dir, eval_step, last_step
+            dped_dir, vgg_dir, eval_step, last_step, wgan, concat
 
 
 def process_test_model_args(arguments):

@@ -23,7 +23,7 @@ WGAN = False
 
 phone, batch_size, train_size, learning_rate, num_train_iters, \
 w_content, w_color, w_texture, w_tv, \
-dped_dir, vgg_dir, eval_step, last_step = utils.process_command_args(sys.argv)
+dped_dir, vgg_dir, eval_step, last_step, WGAN, concat = utils.process_command_args(sys.argv)
 
 np.random.seed(666)
 tf.set_random_seed(666)
@@ -64,7 +64,6 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # transform both dslr and enhanced images to grayscale
 
-    phone_gray = tf.reshape(tf.image.rgb_to_grayscale(phone_image), [-1, PATCH_WIDTH, PATCH_HEIGHT, 1])
     enhanced_gray = tf.reshape(tf.image.rgb_to_grayscale(enhanced), [-1, PATCH_WIDTH, PATCH_HEIGHT, 1])
     dslr_gray = tf.reshape(tf.image.rgb_to_grayscale(dslr_image),[-1, PATCH_WIDTH, PATCH_HEIGHT, 1])
 
@@ -74,9 +73,13 @@ with tf.Graph().as_default(), tf.Session() as sess:
     # adversarial_image = tf.reshape(adversarial_, [-1, PATCH_HEIGHT, PATCH_WIDTH, 1])
 
     # 之前是随机选取，然后混合判断，现在采用跟DCGAN一样的策略，分开判断，再使用交叉熵
-
-    logits_dslr, probs_dslr = models.adversarial(tf.concat([phone_image, dslr_gray], -1))
-    logits_enhanced, probs_enhanced = models.adversarial(tf.concat([phone_image, enhanced_gray], -1))
+    if concat:
+        phone_gray = tf.reshape(tf.image.rgb_to_grayscale(phone_image), [-1, PATCH_WIDTH, PATCH_HEIGHT, 1])
+        logits_dslr, probs_dslr = models.adversarial(tf.concat([phone_gray, dslr_gray], -1))
+        logits_enhanced, probs_enhanced = models.adversarial(tf.concat([phone_gray, enhanced_gray], -1))
+    else:
+        logits_dslr, probs_dslr = models.adversarial(dslr_gray)
+        logits_enhanced, probs_enhanced = models.adversarial(enhanced_gray)
 
     # losses
     # 1) texture (adversarial) loss

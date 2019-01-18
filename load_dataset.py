@@ -47,8 +47,6 @@ def load_test_data(phone, dped_dir, IMAGE_SIZE):
             print(str(round(i * 100 / NUM_TEST_IMAGES)) + "% done", end="\r")
 
     return test_data, test_answ
-
-
 def load_batch(phone, dped_dir, TRAIN_SIZE, IMAGE_SIZE):
 
     train_directory_phone = dped_dir + str(phone) + '/training_data/' + str(phone) + '/'

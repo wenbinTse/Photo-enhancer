@@ -6,6 +6,7 @@ from scipy import misc
 import numpy as np
 from models import u_net
 from load_dataset import preprocess
+import argparse
 
 model_name = './history/last/models/iphone_iteration_22000.ckpt'
 
@@ -35,3 +36,11 @@ def test(file_name, result_name='result.jpg'):
     misc.imsave(result_name, results[0])
     print('result is saved to {}'.format(result_name))
     return results[0]
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description='图像增强')
+    parser.add_argument('file_name', type=str, help='待处理图片路径')
+    parser.add_argument('--result_name', type=str, help='结果保存路径', default='result.jpg')
+    args = parser.parse_args()
+
+    test(args.file_name, args.result_name)
