@@ -21,7 +21,7 @@ saver.restore(sess, model_name)
 
 image_net_process = True
 
-def test(file_name, result_name='result.jpg'):
+def test(file_name, result_name='result.png'):
     image = misc.imread(file_name, mode='RGB')
     assert len(image.shape) == 3, '只处理彩色照片'
     if image_net_process:
@@ -40,7 +40,7 @@ def test(file_name, result_name='result.jpg'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description='图像增强')
     parser.add_argument('file_name', type=str, help='待处理图片路径')
-    parser.add_argument('--result_name', type=str, help='结果保存路径', default='result.jpg')
+    parser.add_argument('--result_name', type=str, help='结果保存路径', default='result.png')
     args = parser.parse_args()
 
     test(args.file_name, args.result_name)

@@ -40,9 +40,9 @@ def show(path, all=True):
     #         plt.legend()
     #         plt.savefig('{}_{}.jpg'.format(path.split('/')[0], names[idx]))
     #         plt.close()
-    #
-    # if all:
-    #     plt.show()
+
+    if all:
+        plt.show()
 
     ###########################
     # save to csv
@@ -59,4 +59,4 @@ def show(path, all=True):
 
 
 if __name__ == '__main__':
-    show('last/models', False)
+    show('/wgan_low_weight/models', False)
