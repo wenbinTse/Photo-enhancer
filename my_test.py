@@ -1,4 +1,4 @@
-"""
+﻿"""
 支持不同尺度输入，并只加载一次模型
 """
 import tensorflow as tf
@@ -8,7 +8,7 @@ from models import u_net
 from load_dataset import preprocess
 import argparse
 
-model_name = './history/last/models/iphone_iteration_22000.ckpt'
+model_name = './pretrained_models/iphone_iteration_22000.ckpt'
 
 inited = False
 images_plh = tf.placeholder(tf.float32, [None, None, None, 3])
