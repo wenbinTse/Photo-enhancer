@@ -1,0 +1,5 @@
+matplotlib==2.2.2
+numpy==1.14.3
+scipy==1.1.0
+tensorflow_gpu==1.8.0
+PyQt5
